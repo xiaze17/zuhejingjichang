@@ -136,9 +136,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 .chart-legend-item{display:flex;align-items:center;gap:5px}
 .chart-legend-line{width:14px;height:2px}
 .chart-legend-dot{width:8px;height:8px;border-radius:50%}
-.period-switch{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
-.period-btn{padding:5px 12px;font-size:12px;border-radius:4px;cursor:pointer;background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
-.period-btn.active{background:var(--gold);color:#000;border-color:var(--gold);font-weight:600}
 .rebalance-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
 .rs-item{text-align:center}
 .rs-label{font-size:10px;color:var(--text3);margin-bottom:3px}
@@ -404,6 +401,7 @@ let calendarView = 'day';
 let calendarMonth = 8;
 let calendarYear = 2026;
 let yieldPeriod = '3m';
+let chartData={comboVals:[],hsVals:[],xLabels:[],created:null}; // 走势图数据，供点击查询
 
 // 默认持仓和成交数据
 const DEFAULT_HOLDINGS = [
@@ -875,18 +873,20 @@ function updateHS300Path(changePct){
   const path=document.getElementById('hs300Path');
   if(!path) return;
   const trendW=800,trendH=240,trendPadTop=20,trendPadBottom=30;
-  const trendYMax=50,trendYMin=-15;
+  const trendYMax=chartData.trendYMax||50,trendYMin=-15;
   function trendY(v){ return trendPadTop+(trendYMax-v)/(trendYMax-trendYMin)*(trendH-trendPadTop-trendPadBottom); }
   const points=52;
-  let d='';
+  let d='',hsVals=[];
   for(let j=0;j<points;j++){
     const progress=j/(points-1);
     let y=changePct*progress+Math.sin(j*0.5)*1.2+Math.sin(j*0.9)*0.6;
     if(j===0)y=0;
     if(j===points-1)y=changePct;
+    hsVals.push(y);
     d+=(j===0?'M':'L')+(j*trendW/(points-1)).toFixed(1)+','+trendY(y).toFixed(1)+' ';
   }
   path.setAttribute('d',d);
+  chartData.hsVals=hsVals;
 }
 
 // ========== 走势图 ==========
@@ -900,24 +900,21 @@ function renderChart(){
     for(let i=0;i<count;i++){const d=new Date(start.getTime()+diff*i);labels.push(String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));}
     return labels;
   }
-  const periodCfg={
-    '3m':{endRet:_baseRet,hsEnd:7.8,xLabels:genLabels(created,now,6)},
-    '1y':{endRet:52,hsEnd:12.5,xLabels:genLabels(new Date(now.getTime()-365*86400000),now,7)},
-    'ytd':{endRet:48,hsEnd:9.2,xLabels:genLabels(new Date(now.getFullYear(),0,1),now,8)},
-    'all':{endRet:_baseRet,hsEnd:7.8,xLabels:genLabels(created,now,6)},
-  };
-  const cfg = periodCfg[yieldPeriod]||periodCfg['3m'];
-  const periodReturnStr = (cfg.endRet>=0?'+':'')+cfg.endRet.toFixed(2)+'%';
+  // 统一使用从创建日期到当前日期的走势
+  const xLabels=genLabels(created,now,6);
+  const endRet=_baseRet;
+  const hsEnd=7.8; // 沪深300模拟基准，实时数据会更新曲线
+  const periodReturnStr=(endRet>=0?'+':'')+endRet.toFixed(2)+'%';
   const trendW=800,trendH=240,trendPadTop=20,trendPadBottom=30;
-  const trendYMax=Math.max(50,Math.ceil((cfg.endRet+5)/10)*10);
+  const trendYMax=Math.max(50,Math.ceil((endRet+5)/10)*10);
   const trendYMin=-15;
   function trendY(v){ return trendPadTop+(trendYMax-v)/(trendYMax-trendYMin)*(trendH-trendPadTop-trendPadBottom); }
   const yTicks=[trendYMin,0,Math.round(trendYMax*0.5/5)*5,trendYMax];
   const yGrid=yTicks.map(v=>`<line x1="0" y1="${trendY(v).toFixed(1)}" x2="800" y2="${trendY(v).toFixed(1)}" stroke="${v===0?'#444':'#2a2a2a'}" stroke-width="${v===0?'0.8':'0.5'}" stroke-dasharray="3"/>`).join('');
   const yLabel=yTicks.map(v=>`<text x="2" y="${(trendY(v)+4).toFixed(1)}" fill="${v===0?'#aaa':'#888'}" font-size="10">${v}%</text>`).join('');
-  const xLabel=cfg.xLabels.map((d,i)=>{
-    const x=i===0?0:i===cfg.xLabels.length-1?trendW:(i/(cfg.xLabels.length-1))*trendW;
-    const anchor=i===0?'start':i===cfg.xLabels.length-1?'end':'middle';
+  const xLabel=xLabels.map((d,i)=>{
+    const x=i===0?0:i===xLabels.length-1?trendW:(i/(xLabels.length-1))*trendW;
+    const anchor=i===0?'start':i===xLabels.length-1?'end':'middle';
     return `<text x="${x.toFixed(1)}" y="255" fill="#888" font-size="10" text-anchor="${anchor}">${d}</text>`;
   }).join('');
   const deals=(currentTrader&&currentTrader.deals)||[];
@@ -929,26 +926,29 @@ function renderChart(){
       comboY=0; // 无交易记录，收益率为0
     }else{
       const progress=j/(trendPoints-1);
-      comboY=cfg.endRet*progress+Math.sin(j*0.7)*3+Math.sin(j*1.3)*1.5+(j%7===0?(Math.random()-0.5)*4:0);
+      comboY=endRet*progress+Math.sin(j*0.7)*3+Math.sin(j*1.3)*1.5+(j%7===0?(Math.random()-0.5)*4:0);
       if(j===0)comboY=0;
-      if(j===trendPoints-1)comboY=cfg.endRet;
+      if(j===trendPoints-1)comboY=endRet;
     }
     comboVals.push(comboY);
     comboPath+=(j===0?'M':'L')+(j*trendW/(trendPoints-1)).toFixed(1)+','+trendY(comboY).toFixed(1)+' ';
   }
   // 沪深300曲线：无交易记录时也为0，有记录时用模拟数据（后续可对接实时）
-  let hsPath='',hsY=0;
+  let hsPath='',hsY=0,hsVals=[];
   for(let j=0;j<trendPoints;j++){
     if(!hasDeals){
       hsY=0;
     }else{
       const progress=j/(trendPoints-1);
-      hsY=cfg.hsEnd*progress+Math.sin(j*0.5)*2+Math.sin(j*0.9)*1;
+      hsY=hsEnd*progress+Math.sin(j*0.5)*2+Math.sin(j*0.9)*1;
       if(j===0)hsY=0;
-      if(j===trendPoints-1)hsY=cfg.hsEnd;
+      if(j===trendPoints-1)hsY=hsEnd;
     }
+    hsVals.push(hsY);
     hsPath+=(j===0?'M':'L')+(j*trendW/(trendPoints-1)).toFixed(1)+','+trendY(hsY).toFixed(1)+' ';
   }
+  // 保存图表数据供点击查询
+  chartData={comboVals,hsVals,xLabels,created,trendW,trendYMax,trendYMin,trendPadTop,trendH,trendPadBottom};
   const rebalanceIdx=[5,14,26,38,47];
   const rebalanceDots=rebalanceIdx.filter(i=>i<comboVals.length).map(i=>({x:(i*trendW/(trendPoints-1)).toFixed(1),y:trendY(comboVals[i]).toFixed(1)}));
   const zeroY=trendY(0);
@@ -973,14 +973,32 @@ function renderChart(){
           <path id="hs300Path" d="${hsPath}" fill="none" stroke="#4A90D9" stroke-width="1.5" opacity="0.8"/>
           <path id="comboPath" d="${comboPath}" fill="none" stroke="var(--gold)" stroke-width="2"/>
           ${rebalanceDots.map(d=>`<circle cx="${d.x}" cy="${d.y}" r="4" fill="var(--gold)" stroke="#1a1a2e" stroke-width="1.5"/>`).join('')}
+          <!-- 点击参考线和数据点 -->
+          <line id="chartVLine" x1="0" y1="20" x2="0" y2="230" stroke="#888" stroke-width="1" stroke-dasharray="4" style="display:none"/>
+          <circle id="chartComboDot" cx="0" cy="0" r="5" fill="var(--gold)" stroke="#1a1a2e" stroke-width="2" style="display:none"/>
+          <circle id="chartHsDot" cx="0" cy="0" r="5" fill="#4A90D9" stroke="#1a1a2e" stroke-width="2" style="display:none"/>
           ${xLabel}
+          <!-- 透明点击区域 -->
+          <rect x="0" y="20" width="800" height="210" fill="transparent" onclick="handleChartClick(evt)" style="cursor:crosshair"/>
         </svg>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:6px">
-        <span style="font-size:13px;color:var(--text2)">本组合 <span class="up" style="font-size:16px;font-weight:700">${periodReturnStr}</span></span>
+      <!-- 选中日期收益率显示 -->
+      <div id="chartSelectedInfo" style="display:none;margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:6px">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:6px" id="chartSelectedDate">--</div>
+        <div style="display:flex;justify-content:space-around">
+          <div style="text-align:center">
+            <div style="font-size:11px;color:var(--text3)">本组合累计</div>
+            <div id="chartSelectedCombo" style="font-size:16px;font-weight:700;color:var(--gold)">--</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:11px;color:var(--text3)">沪深300累计</div>
+            <div id="chartSelectedHs" style="font-size:16px;font-weight:700;color:#4A90D9">--</div>
+          </div>
+        </div>
       </div>
-      <div class="period-switch">
-        ${['3m','1y','ytd','all'].map(p=>`<button class="period-btn ${yieldPeriod===p?'active':''}" data-period="${p}" onclick="switchPeriod('${p}')">${p==='3m'?'近3月':p==='1y'?'近1年':p==='ytd'?'今年以来':'全部'}</button>`).join('')}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:6px">
+        <span style="font-size:13px;color:var(--text2)">本组合累计 <span class="up" style="font-size:16px;font-weight:700">${periodReturnStr}</span></span>
+        <span style="font-size:11px;color:var(--text3)">点击曲线查看某日累计</span>
       </div>
       <div class="rebalance-summary">
         <div class="rs-item"><div class="rs-label">调仓总次数</div><div class="rs-val">${rebalanceTotal}</div></div>
@@ -991,7 +1009,42 @@ function renderChart(){
   </div>`;
 }
 
-function switchPeriod(p){ yieldPeriod=p; renderDetail(); }
+// 点击走势图查询某日累计收益率
+function handleChartClick(evt){
+  if(!chartData.comboVals.length) return;
+  const svg=evt.target.ownerSVGElement;
+  const pt=svg.createSVGPoint();
+  pt.x=evt.clientX;pt.y=evt.clientY;
+  const svgP=pt.matrixTransform(svg.getScreenCTM().inverse());
+  const x=Math.max(0,Math.min(chartData.trendW,svgP.x));
+  const idx=Math.round(x/chartData.trendW*(chartData.comboVals.length-1));
+  const comboRet=chartData.comboVals[idx];
+  const hsRet=chartData.hsVals[idx];
+  // 计算对应日期
+  const created=chartData.created;
+  const now=new Date();
+  const date=new Date(created.getTime()+(now-created)*idx/(chartData.comboVals.length-1));
+  const dateStr=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+  // 显示参考线和数据点
+  const dotX=(idx*chartData.trendW/(chartData.comboVals.length-1)).toFixed(1);
+  const trendY=v=>chartData.trendPadTop+(chartData.trendYMax-v)/(chartData.trendYMax-chartData.trendYMin)*(chartData.trendH-chartData.trendPadTop-chartData.trendPadBottom);
+  document.getElementById('chartVLine').setAttribute('x1',dotX);
+  document.getElementById('chartVLine').setAttribute('x2',dotX);
+  document.getElementById('chartVLine').style.display='block';
+  document.getElementById('chartComboDot').setAttribute('cx',dotX);
+  document.getElementById('chartComboDot').setAttribute('cy',trendY(comboRet).toFixed(1));
+  document.getElementById('chartComboDot').style.display='block';
+  document.getElementById('chartHsDot').setAttribute('cx',dotX);
+  document.getElementById('chartHsDot').setAttribute('cy',trendY(hsRet).toFixed(1));
+  document.getElementById('chartHsDot').style.display='block';
+  // 显示收益率信息
+  document.getElementById('chartSelectedInfo').style.display='block';
+  document.getElementById('chartSelectedDate').textContent=dateStr+' 累计收益率';
+  document.getElementById('chartSelectedCombo').textContent=(comboRet>=0?'+':'')+comboRet.toFixed(2)+'%';
+  document.getElementById('chartSelectedCombo').style.color=comboRet>=0?'var(--red)':'var(--green)';
+  document.getElementById('chartSelectedHs').textContent=(hsRet>=0?'+':'')+hsRet.toFixed(2)+'%';
+  document.getElementById('chartSelectedHs').style.color=hsRet>=0?'var(--red)':'var(--green)';
+}
 
 // ========== 成交记录 ==========
 function renderDeals(){
