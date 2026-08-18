@@ -170,9 +170,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 .deal-reason{font-size:10px;color:var(--text3);margin-top:2px}
 
 /* 底部弹窗 */
-.modal-mask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:1000;display:none;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-mask{position:fixed;top:0;left:0;width:100%;height:100dvh;background:rgba(0,0,0,.6);z-index:1000;display:none;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-mask.show{display:flex;opacity:1;pointer-events:auto}
-.modal-sheet{background:var(--bg2);border-radius:16px 16px 0 0;width:100%;max-width:500px;padding:20px 16px;padding-bottom:calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-height:85vh;overflow-y:auto}
+.modal-sheet{background:var(--bg2);border-radius:16px 16px 0 0;width:100%;max-width:500px;padding:20px 16px;padding-bottom:calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-height:85dvh;overflow-y:auto}
 .modal-mask.show .modal-sheet{transform:translateY(0)}
 .modal-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px}
 .modal-title{font-size:17px;font-weight:600;margin-bottom:18px;text-align:center}
@@ -681,32 +681,38 @@ function renderDetail(){
 
 // ========== 收益日历 ==========
 function renderCalendar(){
-  const monthKey = calendarYear + '-' + calendarMonth;
-  const curMonthData = dailyPnlData[monthKey];
-  const calendarCells = [];
-  const firstWeekday = new Date(calendarYear, calendarMonth-1, 1).getDay();
+  const t=currentTrader;
+  const created=t&&t.created?new Date(t.created):new Date(2025,6,1);
+  const cYear=created.getFullYear(),cMonth=created.getMonth()+1,cDay=created.getDate();
+  const now=new Date();
+  const nowYear=now.getFullYear(),nowMonth=now.getMonth()+1,nowDay=now.getDate();
+  const monthKey=calendarYear+'-'+calendarMonth;
+  const curMonthData=dailyPnlData[monthKey];
+  const calendarCells=[];
+  const firstWeekday=new Date(calendarYear,calendarMonth-1,1).getDay();
   for(let i=0;i<firstWeekday;i++) calendarCells.push({empty:true});
-  const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
+  const daysInMonth=new Date(calendarYear,calendarMonth,0).getDate();
   for(let day=1;day<=daysInMonth;day++){
-    const date = new Date(calendarYear, calendarMonth-1, day);
-    const weekday = date.getDay();
-    const isWeekend = weekday===0 || weekday===6;
-    const isToday = calendarYear===2026 && calendarMonth===8 && day===18;
-    const isFuture = calendarYear>2026 || (calendarYear===2026 && calendarMonth>8) || (calendarYear===2026 && calendarMonth===8 && day>18);
-    const hasData = curMonthData && curMonthData[day] && !isWeekend && !isFuture;
+    const weekday=new Date(calendarYear,calendarMonth-1,day).getDay();
+    const isWeekend=weekday===0||weekday===6;
+    const isToday=calendarYear===nowYear&&calendarMonth===nowMonth&&day===nowDay;
+    const isFuture=calendarYear>nowYear||(calendarYear===nowYear&&calendarMonth>nowMonth)||(calendarYear===nowYear&&calendarMonth===nowMonth&&day>nowDay);
+    const isBeforeCreated=calendarYear<cYear||(calendarYear===cYear&&calendarMonth<cMonth)||(calendarYear===cYear&&calendarMonth===cMonth&&day<cDay);
+    const hasData=curMonthData&&curMonthData[day]&&!isWeekend&&!isFuture&&!isBeforeCreated;
     if(!hasData){
       calendarCells.push({day,empty:false,nodata:true,isToday});
     }else{
-      const d = curMonthData[day];
+      const d=curMonthData[day];
       calendarCells.push({day,empty:false,nodata:false,ret:d.ret,money:d.money,up:d.money>0,isToday});
     }
   }
-  const dayStats = {win:0,loss:0};
+  const dayStats={win:0,loss:0};
   calendarCells.forEach(c=>{ if(!c.empty&&!c.nodata){ if(c.up)dayStats.win++; else dayStats.loss++; }});
-  const curMonthStat = monthlyPnlData[monthKey];
-  const curYearStat = yearlyPnlData[calendarYear];
-  const totalYearStats = Object.values(yearlyPnlData).reduce((a,y)=>(y.up?a.win++:a.loss++,a),{win:0,loss:0});
-  const calMinYear=2025,calMinMonth=7,calMaxYear=2026,calMaxMonth=8;
+  const monthBeforeCreated=calendarYear<cYear||(calendarYear===cYear&&calendarMonth<cMonth);
+  const curMonthStat=!monthBeforeCreated?monthlyPnlData[monthKey]:null;
+  const curYearStat=calendarYear>=cYear?yearlyPnlData[calendarYear]:null;
+  const totalYearStats=Object.entries(yearlyPnlData).filter(([y])=>parseInt(y)>=cYear).reduce((a,[,y])=>(y.up?a.win++:a.loss++,a),{win:0,loss:0});
+  const calMinYear=cYear,calMinMonth=cMonth,calMaxYear=nowYear,calMaxMonth=nowMonth;
   const showPrev = calendarView==='day' ? !(calendarYear===calMinYear&&calendarMonth<=calMinMonth) : calendarView==='month'?calendarYear>calMinYear:false;
   const showNext = calendarView==='day' ? !(calendarYear===calMaxYear&&calendarMonth>=calMaxMonth) : calendarView==='month'?calendarYear<calMaxYear:false;
 
@@ -723,16 +729,22 @@ function renderCalendar(){
   }else if(calendarView==='month'){
     body = `<div class="cal-month-grid">
       ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>{
-        const md = calendarYear===2026&&(m===6||m===7||m===8) ? monthlyPnlData['2026-'+m] : (calendarYear===2025&&m>=7 ? monthlyPnlData['2025-'+m] : null);
+        const mb=cYear>calendarYear||(cYear===calendarYear&&m<cMonth);
+        const md=!mb?monthlyPnlData[calendarYear+'-'+m]:null;
         if(!md) return `<div class="cal-month-cell nodata"><span>${m}月</span></div>`;
         return `<div class="cal-month-cell ${md.up?'up':'down'}"><span>${m}月</span><span class="ret">${md.ret>0?'+':''}${md.ret}%</span></div>`;
       }).join('')}
     </div>`;
   }else{
-    body = `<div class="cal-year-cell"><div style="font-size:16px">2026年</div><div style="font-size:20px;font-weight:700;margin-top:6px">+37.84%</div></div>`;
+    const ys=yearlyPnlData[calendarYear];
+    if(ys&&calendarYear>=cYear){
+      body=`<div class="cal-year-cell"><div style="font-size:16px">${calendarYear}年</div><div style="font-size:20px;font-weight:700;margin-top:6px;color:${ys.up?'var(--red)':'var(--green)'}">${ys.ret>0?'+':''}${ys.ret}%</div></div>`;
+    }else{
+      body=`<div class="cal-year-cell"><div style="font-size:16px">${calendarYear}年</div><div style="font-size:14px;color:var(--text3);margin-top:6px">暂无数据</div></div>`;
+    }
   }
 
-  const summaryRet = calendarView==='day' ? (curMonthStat?`<span class="${curMonthStat.up?'up':'down'}" style="font-weight:600">${curMonthStat.ret>0?'+':''}${curMonthStat.ret}%</span>`:'--') : calendarView==='month' ? (curYearStat?`<span class="${curYearStat.up?'up':'down'}" style="font-weight:600">${curYearStat.ret>0?'+':''}${curYearStat.ret}%</span>`:'--') : `<span class="up" style="font-weight:600">+37.84%</span>`;
+  const summaryRet = calendarView==='day' ? (curMonthStat?`<span class="${curMonthStat.up?'up':'down'}" style="font-weight:600">${curMonthStat.ret>0?'+':''}${curMonthStat.ret}%</span>`:'--') : calendarView==='month' ? (curYearStat?`<span class="${curYearStat.up?'up':'down'}" style="font-weight:600">${curYearStat.ret>0?'+':''}${curYearStat.ret}%</span>`:'--') : (curYearStat?`<span class="${curYearStat.up?'up':'down'}" style="font-weight:600">${curYearStat.ret>0?'+':''}${curYearStat.ret}%</span>`:'--');
   const summaryWL = calendarView==='day'?`盈 ${curMonthStat?curMonthStat.win:0} / 亏 ${curMonthStat?curMonthStat.loss:0}`:calendarView==='month'?`盈 ${curYearStat?curYearStat.win:0} / 亏 ${curYearStat?curYearStat.loss:0}`:`盈 ${totalYearStats.win} / 亏 ${totalYearStats.loss}`;
 
   return `<div class="detail-section">
@@ -880,13 +892,20 @@ function updateHoldingPrices(){
 
 // ========== 走势图 ==========
 function renderChart(){
-  const t = currentTrader;
-  const _baseRet = parsePct(t.ret);
-  const periodCfg = {
-    '3m':{endRet:_baseRet,hsEnd:7.8,xLabels:['06-01','06-15','07-01','07-15','08-01','08-17']},
-    '1y':{endRet:52,hsEnd:12.5,xLabels:['25-08','25-10','25-12','26-02','26-04','26-06','26-08']},
-    'ytd':{endRet:48,hsEnd:9.2,xLabels:['01-01','02-01','03-01','04-01','05-01','06-01','07-01','08-17']},
-    'all':{endRet:_baseRet,hsEnd:7.8,xLabels:['06-01','06-15','07-01','07-15','08-01','08-17']},
+  const t=currentTrader;
+  const _baseRet=parsePct(t.ret);
+  const created=t&&t.created?new Date(t.created):new Date(2025,6,1);
+  const now=new Date();
+  function genLabels(start,end,count){
+    const labels=[];const diff=(end-start)/(count-1);
+    for(let i=0;i<count;i++){const d=new Date(start.getTime()+diff*i);labels.push(String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));}
+    return labels;
+  }
+  const periodCfg={
+    '3m':{endRet:_baseRet,hsEnd:7.8,xLabels:genLabels(created,now,6)},
+    '1y':{endRet:52,hsEnd:12.5,xLabels:genLabels(new Date(now.getTime()-365*86400000),now,7)},
+    'ytd':{endRet:48,hsEnd:9.2,xLabels:genLabels(new Date(now.getFullYear(),0,1),now,8)},
+    'all':{endRet:_baseRet,hsEnd:7.8,xLabels:genLabels(created,now,6)},
   };
   const cfg = periodCfg[yieldPeriod]||periodCfg['3m'];
   const periodReturnStr = (cfg.endRet>=0?'+':'')+cfg.endRet.toFixed(2)+'%';
@@ -1119,8 +1138,8 @@ function toggleStyle(s){
   const idx=buttonSelectedStyles.indexOf(s);
   if(idx>=0) buttonSelectedStyles.splice(idx,1);
   else buttonSelectedStyles.push(s);
-  renderStyleButtons();
-  updateStylePreview();
+  // 延迟渲染，避免点击事件冒泡时元素已被替换导致弹窗误关闭
+  setTimeout(()=>{ renderStyleButtons(); updateStylePreview(); }, 0);
 }
 function getSelectedStyles(){
   const inputVal=document.getElementById('styleInput').value.trim();
