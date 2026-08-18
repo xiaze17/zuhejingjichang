@@ -1078,10 +1078,16 @@ function closeRebalanceModal(e){
 function onRbCodeInput(){
   const code=document.getElementById('rbCode').value.trim();
   if(STOCK_MAP[code]) document.getElementById('rbStock').value=STOCK_MAP[code];
+  const holdings=(currentTrader&&currentTrader.holdings)||[];
+  const existing=holdings.find(h=>h.code===code);
+  if(existing&&existing.logic) document.getElementById('rbLogic').value=existing.logic;
 }
 function onRbStockInput(){
   const stock=document.getElementById('rbStock').value.trim();
   for(const c in STOCK_MAP){ if(STOCK_MAP[c]===stock){document.getElementById('rbCode').value=c;break;} }
+  const holdings=(currentTrader&&currentTrader.holdings)||[];
+  const existing=holdings.find(h=>h.stock===stock);
+  if(existing&&existing.logic) document.getElementById('rbLogic').value=existing.logic;
 }
 function confirmRebalance(){
   const code=document.getElementById('rbCode').value.trim();
