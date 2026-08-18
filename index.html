@@ -1123,9 +1123,9 @@ function confirmRebalance(){
     }else if(dir==='买入'){
       const addedRatio=newRatio-oldRatio;
       const newCost=(parseFloat(existing.cost)*oldRatio+price*addedRatio)/newRatio;
-      existing.cost=newCost.toFixed(2); existing.ratio=newRatio.toFixed(1)+'%';
+      existing.cost=newCost.toFixed(2); existing.ratio=newRatio.toFixed(1)+'%'; existing.logic=logic;
     }else{
-      existing.ratio=newRatio.toFixed(1)+'%';
+      existing.ratio=newRatio.toFixed(1)+'%'; existing.logic=logic;
     }
   }else if(newRatio>0){
     holdings.push({code,stock,cost:price.toFixed(2),ratio:newRatio.toFixed(1)+'%',todayPnl:'+0.00%',cumPnl:'+0.00%',logic});
