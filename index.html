@@ -518,6 +518,7 @@ function showPage(page){
   document.getElementById('topAction').style.display = page==='detail' ? 'flex' : 'none';
   document.getElementById('topTitle').textContent = page==='list' ? '组合竞技场' : (currentTrader ? currentTrader.name : '组合详情');
   document.getElementById('appContainer').scrollTop = 0;
+  if(page==='list') stopDateTimeTimer();
 }
 
 function goBack(){ showPage('list'); }
@@ -617,7 +618,7 @@ function renderDetail(){
       <div class="dh-top">
         <div class="dh-avatar">${robotAvatar(t.color,56)}</div>
         <div class="dh-main">
-          <div class="dh-name">${t.name}</div>
+          <div class="dh-name">${t.name}<span id="currentDateTime" style="font-size:12px;color:var(--text3);font-weight:400;margin-left:10px;letter-spacing:0"></span></div>
           <div class="dh-tags">${(t.tags||[]).map(tag=>`<span class="badge badge-gold">${tag}</span>`).join('')}</div>
           <div class="dh-desc" onclick="editDesc()">${t.desc||'点击编辑策略简介'}</div>
         </div>
@@ -668,6 +669,7 @@ function renderDetail(){
 
   document.getElementById('detailContent').innerHTML = html;
   updateHoldingPrices();
+  startDateTimeTimer();
 }
 
 // ========== 收益日历 ==========
@@ -776,7 +778,7 @@ function renderHoldings(){
           <div class="hc-ratio">${h.ratio}</div>
         </div>
         <div class="hc-meta">
-          <span>${sector} · 首买 ${firstBuy}</span>
+          <span>${sector} · 首买 ${firstBuy} · 持仓 ${countTradingDays(firstBuy)}天</span>
           <span>成本 ${h.cost} / 现价 <span class="quote-price" data-code="${h.code}">--</span></span>
         </div>
         <div class="hc-pnl">
@@ -1169,6 +1171,42 @@ function isTradingTime(){
   if(MARKET_HOLIDAYS.includes(dateStr)) return false;
   const t=now.getHours()*60+now.getMinutes();
   return (t>=570&&t<=690)||(t>=780&&t<=900);
+}
+
+// 实时日期时间更新
+let dateTimeTimer=null;
+function updateDateTime(){
+  const el=document.getElementById('currentDateTime');
+  if(!el) return;
+  const now=new Date();
+  const str=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  el.textContent=str;
+}
+function startDateTimeTimer(){
+  stopDateTimeTimer();
+  updateDateTime();
+  dateTimeTimer=setInterval(updateDateTime,1000);
+}
+function stopDateTimeTimer(){
+  if(dateTimeTimer){ clearInterval(dateTimeTimer); dateTimeTimer=null; }
+}
+
+// 计算两个日期之间的交易日数量（排除周末和节假日）
+function countTradingDays(startDateStr){
+  if(!startDateStr||startDateStr==='-') return 0;
+  const start=new Date(startDateStr);
+  const end=new Date();
+  start.setHours(0,0,0,0); end.setHours(0,0,0,0);
+  if(start>end) return 0;
+  let count=0;
+  const cur=new Date(start);
+  while(cur<=end){
+    const day=cur.getDay();
+    const ds=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
+    if(day!==0&&day!==6&&!MARKET_HOLIDAYS.includes(ds)) count++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return count;
 }
 
 function openRebalanceModal(){
