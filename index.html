@@ -421,7 +421,7 @@ let yieldPeriod = '3m';
 
 // 默认持仓和成交数据
 const DEFAULT_HOLDINGS = [
-  {code:'002236',stock:'大华股份',cost:'16.37',ratio:'40.0%',todayPnl:'+0.15%',cumPnl:'+0.00%',logic:'尾盘建仓加仓，安防龙头'},
+  {code:'002236',stock:'大华股份',cost:'16.37',ratio:'40.0%',todayPnl:'+0.15%',cumPnl:'+0.00%',logic:'尾盘建仓加仓，安防龙头',totalShares:40/16.37,totalCost:40},
 ];
 const DEFAULT_DEALS = [
   {date:'2026-08-17',time:'14:54:00',dir:'买入',stock:'大华股份',code:'002236',price:'16.39',posRatio:'20.0% --> 40.0%',reason:'加仓'},
@@ -1142,11 +1142,31 @@ function confirmDelete(){
 }
 
 // ========== 调仓 ==========
-// 检查是否在A股交易时间内（工作日9:30-11:30, 13:00-15:00）
+// A股休市日期（法定节假日，周末自动排除）
+const MARKET_HOLIDAYS=[
+  // 2025年
+  '2025-01-01','2025-01-28','2025-01-29','2025-01-30','2025-01-31','2025-02-03','2025-02-04',
+  '2025-04-04','2025-04-07',
+  '2025-05-01','2025-05-02','2025-05-05',
+  '2025-05-31','2025-06-02',
+  '2025-10-01','2025-10-02','2025-10-03','2025-10-06','2025-10-07','2025-10-08',
+  // 2026年（预测，以官方公告为准）
+  '2026-01-01','2026-01-02',
+  '2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20',
+  '2026-04-06',
+  '2026-05-01','2026-05-04','2026-05-05',
+  '2026-06-19','2026-06-22',
+  '2026-09-25','2026-09-28',
+  '2026-10-01','2026-10-02','2026-10-05','2026-10-06','2026-10-07',
+];
+
+// 检查是否在A股交易时间内（工作日9:30-11:30, 13:00-15:00，排除节假日）
 function isTradingTime(){
   const now=new Date();
   const day=now.getDay();
   if(day===0||day===6) return false;
+  const dateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  if(MARKET_HOLIDAYS.includes(dateStr)) return false;
   const t=now.getHours()*60+now.getMinutes();
   return (t>=570&&t<=690)||(t>=780&&t<=900);
 }
@@ -1237,17 +1257,25 @@ function confirmRebalance(){
   deals.unshift({date,time,dir,stock,code,price:price.toFixed(2),posRatio,reason:logic});
   
   if(existing){
+    // 兼容旧数据：如果没有totalShares/totalCost，根据当前仓位和成本反推
+    if(existing.totalShares===undefined){ existing.totalShares=oldRatio/parseFloat(existing.cost); existing.totalCost=oldRatio; }
     if(newRatio<=0){
       currentTrader.holdings = holdings.filter(h=>h.code!==code);
     }else if(dir==='买入'){
       const addedRatio=newRatio-oldRatio;
-      const newCost=(parseFloat(existing.cost)*oldRatio+price*addedRatio)/newRatio;
-      existing.cost=newCost.toFixed(2); existing.ratio=newRatio.toFixed(1)+'%'; existing.logic=logic;
+      existing.totalShares+=addedRatio/price;
+      existing.totalCost+=addedRatio;
+      existing.cost=(existing.totalCost/existing.totalShares).toFixed(2);
+      existing.ratio=newRatio.toFixed(1)+'%'; existing.logic=logic;
     }else{
+      const soldRatio=oldRatio-newRatio;
+      existing.totalShares-=soldRatio/price;
+      existing.totalCost-=soldRatio;
+      existing.cost=(existing.totalCost/existing.totalShares).toFixed(2);
       existing.ratio=newRatio.toFixed(1)+'%'; existing.logic=logic;
     }
   }else if(newRatio>0){
-    holdings.push({code,stock,cost:price.toFixed(2),ratio:newRatio.toFixed(1)+'%',todayPnl:'+0.00%',cumPnl:'+0.00%',logic});
+    holdings.push({code,stock,cost:price.toFixed(2),ratio:newRatio.toFixed(1)+'%',todayPnl:'+0.00%',cumPnl:'+0.00%',logic,totalShares:newRatio/price,totalCost:newRatio});
   }
   
   // 更新组合统计
