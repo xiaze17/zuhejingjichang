@@ -330,8 +330,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
       <input type="number" id="rbPrice" placeholder="输入代码后自动获取" step="0.01" readonly style="background:var(--bg3);color:var(--gold);font-weight:600">
     </div>
     <div class="modal-field">
-      <label>仓位（%）</label>
-      <input type="number" id="rbRatio" placeholder="如20表示20%" step="0.1">
+      <label>仓位（%）<span id="rbRatioVal" style="float:right;color:var(--gold);font-weight:600">0%</span></label>
+      <input type="range" id="rbRatioSlider" min="0" max="100" step="0.5" value="0" style="width:100%;accent-color:var(--gold)" oninput="document.getElementById('rbRatio').value=this.value;document.getElementById('rbRatioVal').textContent=this.value+'%'">
+      <input type="hidden" id="rbRatio" value="0">
       <div style="font-size:11px;color:var(--text3);margin-top:6px">当前剩余仓位：<span id="rbRemaining" style="font-weight:600;color:var(--gold)">0.0%</span></div>
     </div>
     <div class="modal-field">
@@ -422,7 +423,7 @@ let yieldPeriod = '3m';
 
 // 默认持仓和成交数据
 const DEFAULT_HOLDINGS = [
-  {code:'002236',stock:'大华股份',cost:'16.37',ratio:'40.0%',todayPnl:'+0.15%',cumPnl:'+0.00%',logic:'尾盘建仓加仓，安防龙头',totalShares:40/16.37,totalCost:40},
+  {code:'002236',stock:'大华股份',cost:'16.37',ratio:'40.0%',shares:4000/16.37,costAmount:4000,todayPnl:'+0.15%',cumPnl:'+0.00%',logic:'尾盘建仓加仓，安防龙头'},
 ];
 const DEFAULT_DEALS = [
   {date:'2026-08-17',time:'14:54:00',dir:'买入',stock:'大华股份',code:'002236',price:'16.39',posRatio:'20.0% --> 40.0%',reason:'加仓'},
@@ -484,6 +485,11 @@ function init(){
   allTraders.forEach(t=>{
     if(!t.holdings) t.holdings = JSON.parse(JSON.stringify(DEFAULT_HOLDINGS));
     if(!t.deals) t.deals = JSON.parse(JSON.stringify(DEFAULT_DEALS));
+    // 兼容旧数据：初始化现金、持股数、成本金额（总资金10000）
+    t.holdings.forEach(h=>{
+      if(h.shares===undefined){ h.costAmount=parseFloat(h.ratio)*100; h.shares=h.costAmount/parseFloat(h.cost); }
+    });
+    if(t.cash===undefined){ t.cash=10000 - t.holdings.reduce((s,h)=>s+(h.costAmount||0),0); }
   });
   styleOptions = [...new Set(allTraders.flatMap(t=>t.tags||[]))];
   renderList();
@@ -776,7 +782,7 @@ function renderHoldings(){
       return `<div class="holding-card">
         <div class="hc-top">
           <div><span class="hc-name">${h.stock}</span><span class="hc-code">${h.code}</span><span class="hc-hold-days">持仓${countTradingDays(firstBuy)}天</span></div>
-          <div class="hc-ratio">${h.ratio}</div>
+          <div class="hc-ratio" data-code="${h.code}">${h.ratio}</div>
         </div>
         <div class="hc-meta">
           <span>${sector} · 首买 ${firstBuy}</span>
@@ -814,27 +820,43 @@ function updateHoldingPrices(){
   if(holdings.length===0) return;
   const codes=holdings.map(h=>h.code);
   getStockQuotes(codes,function(results){
+    // 第一步：计算总市值 = 现金 + 各持仓市值
+    let totalMV=(currentTrader.cash||0);
+    const priceMap={};
+    holdings.forEach(h=>{
+      const quote=results[h.code];
+      const price=quote&&quote.price?parseFloat(quote.price):parseFloat(h.cost);
+      priceMap[h.code]=price;
+      if(h.shares===undefined){ h.costAmount=parseFloat(h.ratio)*100; h.shares=h.costAmount/parseFloat(h.cost); }
+      totalMV+=(h.shares||0)*price;
+    });
+    // 第二步：更新每个持仓的仓位比例、现价、收益率
     let weightedTodayPnl=0;
     holdings.forEach(h=>{
       const code=h.code;
+      const price=priceMap[code];
       const quote=results[code];
-      if(!quote||!quote.price) return;
-      const price=parseFloat(quote.price);
-      const prevClose=parseFloat(quote.prevClose);
+      const prevClose=quote&&quote.prevClose?parseFloat(quote.prevClose):0;
       const cost=parseFloat(h.cost);
+      // 动态仓位比例
+      const marketValue=(h.shares||0)*price;
+      const dynamicRatio=totalMV>0?marketValue/totalMV*100:0;
+      h.ratio=dynamicRatio.toFixed(1)+'%';
+      const ratioEl=document.querySelector('.hc-ratio[data-code="'+code+'"]');
+      if(ratioEl) ratioEl.textContent=h.ratio;
       // 更新现价
       const priceEl=document.querySelector('.quote-price[data-code="'+code+'"]');
-      if(priceEl) priceEl.textContent=quote.price;
-      // 计算今日收益率 = (现价-昨收)/昨收
+      if(priceEl&&quote&&quote.price) priceEl.textContent=quote.price;
+      // 今日收益率
       if(prevClose>0){
         const todayPnl=((price-prevClose)/prevClose*100);
         const todayStr=(todayPnl>=0?'+':'')+todayPnl.toFixed(2)+'%';
         const todayEl=document.querySelector('.today-pnl[data-code="'+code+'"]');
         if(todayEl){todayEl.textContent=todayStr;todayEl.className='today-pnl '+(todayPnl>=0?'up':'down');}
         h.todayPnl=todayStr;
-        weightedTodayPnl+=todayPnl*parseFloat(h.ratio);
+        weightedTodayPnl+=todayPnl*dynamicRatio;
       }
-      // 计算累计收益率 = (现价-成本)/成本
+      // 累计收益率
       if(cost>0){
         const cumPnl=((price-cost)/cost*100);
         const cumStr=(cumPnl>=0?'+':'')+cumPnl.toFixed(2)+'%';
@@ -843,7 +865,11 @@ function updateHoldingPrices(){
         h.cumPnl=cumStr;
       }
     });
-    // 组合今日盈亏 = 加权平均(仓位百分比/100)
+    // 更新剩余仓位
+    const remainingRatio=totalMV>0?(currentTrader.cash||0)/totalMV*100:100;
+    const remainingEl=document.querySelector('.holding-footer span:last-child');
+    if(remainingEl) remainingEl.textContent=remainingRatio.toFixed(1)+'%';
+    // 组合今日盈亏
     const comboToday=weightedTodayPnl/100;
     const comboStr=(comboToday>=0?'+':'')+comboToday.toFixed(2)+'%';
     const comboEl=document.getElementById('comboTodayPnl');
@@ -1145,6 +1171,9 @@ function confirmDelete(){
 }
 
 // ========== 调仓 ==========
+// 调仓上下文（内部使用，不显示资金）
+let rebalanceCtx={prices:{},totalMV:0,remainingRatio:0};
+
 // A股休市日期（法定节假日，周末自动排除）
 const MARKET_HOLIDAYS=[
   // 2025年
@@ -1221,10 +1250,27 @@ function openRebalanceModal(){
     document.getElementById('rbPrice').value='';
     document.getElementById('rbRatio').value='';
     document.getElementById('rbLogic').value='';
-    const holdings = (currentTrader && currentTrader.holdings) || [];
-    const totalPos=holdings.reduce((s,h)=>s+parseFloat(h.ratio),0);
-    document.getElementById('rbRemaining').textContent=(100-totalPos).toFixed(1)+'%';
-  }catch(e){ console.error('openRebalanceModal error:', e); }
+    document.getElementById('rbRatioSlider').value=0;
+    document.getElementById('rbRatioVal').textContent='0%';
+    const holdings=(currentTrader&&currentTrader.holdings)||[];
+    if(holdings.length>0){
+      getStockQuotes(holdings.map(h=>h.code),function(results){
+        rebalanceCtx.prices={};
+        let mv=currentTrader.cash||0;
+        holdings.forEach(h=>{
+          const p=results[h.code]?parseFloat(results[h.code].price):parseFloat(h.cost);
+          rebalanceCtx.prices[h.code]=p;
+          mv+=(h.shares||0)*p;
+        });
+        rebalanceCtx.totalMV=mv;
+        rebalanceCtx.remainingRatio=mv>0?(currentTrader.cash||0)/mv*100:100;
+        document.getElementById('rbRemaining').textContent=rebalanceCtx.remainingRatio.toFixed(1)+'%';
+      });
+    }else{
+      rebalanceCtx={prices:{},totalMV:currentTrader.cash||10000,remainingRatio:100};
+      document.getElementById('rbRemaining').textContent='100.0%';
+    }
+  }catch(e){ console.error('openRebalanceModal error:',e); }
   showModal('rebalanceModal');
 }
 function closeRebalanceModal(e){
@@ -1237,6 +1283,17 @@ function onRbCodeInput(){
   const holdings=(currentTrader&&currentTrader.holdings)||[];
   const existing=holdings.find(h=>h.code===code);
   if(existing&&existing.logic) document.getElementById('rbLogic').value=existing.logic;
+  // 已持仓股票：滑块定位到当前仓位
+  if(existing){
+    const curRatio=parseFloat(existing.ratio)||0;
+    document.getElementById('rbRatioSlider').value=curRatio;
+    document.getElementById('rbRatio').value=curRatio;
+    document.getElementById('rbRatioVal').textContent=curRatio+'%';
+  }else{
+    document.getElementById('rbRatioSlider').value=0;
+    document.getElementById('rbRatio').value=0;
+    document.getElementById('rbRatioVal').textContent='0%';
+  }
   // 输入6位股票代码后自动获取现价和股票名
   if(/^\d{6}$/.test(code)){
     getStockQuotes([code],function(results){
@@ -1287,34 +1344,51 @@ function confirmRebalance(){
   const newRatio=ratio;
   if(newRatio===oldRatio){ alert('仓位未发生变化'); return; }
   const dir=newRatio>oldRatio?'买入':'卖出';
-  if(dir==='买入'){
-    const currentTotal=holdings.reduce((s,h)=>s+parseFloat(h.ratio),0);
-    const newTotal=currentTotal-oldRatio+newRatio;
-    if(newTotal>100){ alert('个股仓位合计不能超过100%，当前剩余仓位为'+(100-currentTotal+oldRatio).toFixed(1)+'%'); return; }
+  
+  // 计算总市值（优先用调仓时获取的，否则实时计算）
+  let totalMV=rebalanceCtx.totalMV;
+  if(!totalMV||totalMV<=0){
+    totalMV=(currentTrader.cash||0)+holdings.reduce((s,h)=>s+(h.shares||0)*price,0);
   }
+  const targetAmount=newRatio*totalMV/100;
+  const currentAmount=existing?(existing.shares||0)*price:0;
+  
+  if(dir==='买入' && targetAmount>currentAmount+(currentTrader.cash||0)){
+    alert('仓位超出可用资金，当前剩余仓位约'+rebalanceCtx.remainingRatio.toFixed(1)+'%'); return;
+  }
+  
   const posRatio=oldRatio.toFixed(1)+'% --> '+newRatio.toFixed(1)+'%';
   deals.unshift({date,time,dir,stock,code,price:price.toFixed(2),posRatio,reason:logic});
   
   if(existing){
-    // 兼容旧数据：如果没有totalShares/totalCost，根据当前仓位和成本反推
-    if(existing.totalShares===undefined){ existing.totalShares=oldRatio/parseFloat(existing.cost); existing.totalCost=oldRatio; }
+    // 兼容旧数据
+    if(existing.shares===undefined){ existing.costAmount=parseFloat(existing.ratio)*100; existing.shares=existing.costAmount/parseFloat(existing.cost); }
     if(newRatio<=0){
-      currentTrader.holdings = holdings.filter(h=>h.code!==code);
+      currentTrader.cash=(currentTrader.cash||0)+currentAmount;
+      currentTrader.holdings=holdings.filter(h=>h.code!==code);
     }else if(dir==='买入'){
-      const addedRatio=newRatio-oldRatio;
-      existing.totalShares+=addedRatio/price;
-      existing.totalCost+=addedRatio;
-      existing.cost=(existing.totalCost/existing.totalShares).toFixed(2);
+      const buyAmount=targetAmount-currentAmount;
+      const buyShares=buyAmount/price;
+      existing.shares+=buyShares;
+      existing.costAmount=(existing.costAmount||0)+buyAmount;
+      existing.cost=(existing.costAmount/existing.shares).toFixed(2);
       existing.ratio=newRatio.toFixed(1)+'%'; existing.logic=logic;
+      currentTrader.cash=(currentTrader.cash||0)-buyAmount;
     }else{
-      const soldRatio=oldRatio-newRatio;
-      existing.totalShares-=soldRatio/price;
-      existing.totalCost-=soldRatio;
-      existing.cost=(existing.totalCost/existing.totalShares).toFixed(2);
+      const sellAmount=currentAmount-targetAmount;
+      const sellShares=sellAmount/price;
+      const soldPct=sellShares/existing.shares;
+      existing.shares-=sellShares;
+      existing.costAmount=(existing.costAmount||0)*(1-soldPct);
+      existing.cost=(existing.costAmount/existing.shares).toFixed(2);
       existing.ratio=newRatio.toFixed(1)+'%'; existing.logic=logic;
+      currentTrader.cash=(currentTrader.cash||0)+sellAmount;
     }
   }else if(newRatio>0){
-    holdings.push({code,stock,cost:price.toFixed(2),ratio:newRatio.toFixed(1)+'%',todayPnl:'+0.00%',cumPnl:'+0.00%',logic,totalShares:newRatio/price,totalCost:newRatio});
+    const buyAmount=targetAmount;
+    const buyShares=buyAmount/price;
+    holdings.push({code,stock,cost:price.toFixed(2),ratio:newRatio.toFixed(1)+'%',shares:buyShares,costAmount:buyAmount,todayPnl:'+0.00%',cumPnl:'+0.00%',logic});
+    currentTrader.cash=(currentTrader.cash||0)-buyAmount;
   }
   
   // 更新组合统计
