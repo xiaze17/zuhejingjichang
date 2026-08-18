@@ -33,18 +33,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 .page{display:none}
 .page.active{display:block}
 
-/* 冠军区 */
-.champions{padding:12px}
-.champ-scroll{display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;padding-bottom:4px}
-.champ-scroll::-webkit-scrollbar{display:none}
-.champ-card{flex:0 0 calc(50% - 5px);min-width:160px;scroll-snap-align:start;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px}
-.champ-card:first-child{flex:0 0 calc(50% - 5px)}
-.champ-avatar{flex-shrink:0}
-.champ-info{flex:1;min-width:0}
-.champ-label{font-size:10px;color:var(--text3);margin-bottom:3px}
-.champ-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.champ-ret{font-size:16px;font-weight:700;flex-shrink:0}
-
 /* 组合卡片列表 */
 .portfolio-list{padding:0 12px}
 .portfolio-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;transition:all .2s}
@@ -223,10 +211,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 ::-webkit-scrollbar-track{background:transparent}
 
-/* 排序按钮 */
-.sort-controls{display:flex;gap:8px;padding:0 12px 12px}
-.sort-btn{flex:1;padding:8px;font-size:12px;text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer}
-.sort-btn.active{color:var(--gold);border-color:var(--gold)}
 </style>
 </head>
 <body>
@@ -530,21 +514,6 @@ function showPage(page){
 
 function goBack(){ showPage('list'); }
 
-function moveUp(name){
-  const idx = allTraders.findIndex(t=>t.name===name);
-  if(idx<=0) return;
-  [allTraders[idx-1],allTraders[idx]] = [allTraders[idx],allTraders[idx-1]];
-  saveTraders();
-  renderList();
-}
-
-function moveDown(name){
-  const idx = allTraders.findIndex(t=>t.name===name);
-  if(idx<0||idx>=allTraders.length-1) return;
-  [allTraders[idx+1],allTraders[idx]] = [allTraders[idx],allTraders[idx+1]];
-  saveTraders();
-  renderList();
-}
 function renderList(){
   const traders = allTraders;
   // 组合列表
@@ -591,8 +560,6 @@ function moveUp(name){
   if(idx<=0) return;
   [allTraders[idx-1],allTraders[idx]] = [allTraders[idx],allTraders[idx-1]];
   saveTraders();
-  sortMode='custom';
-  document.querySelectorAll('.sort-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
   renderList();
 }
 
@@ -601,8 +568,6 @@ function moveDown(name){
   if(idx<0||idx>=allTraders.length-1) return;
   [allTraders[idx+1],allTraders[idx]] = [allTraders[idx],allTraders[idx+1]];
   saveTraders();
-  sortMode='custom';
-  document.querySelectorAll('.sort-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
   renderList();
 }
 
