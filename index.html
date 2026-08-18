@@ -367,6 +367,45 @@ const STOCK_MAP = {
   '300059':'东方财富','601668':'中国建筑'
 };
 
+// 股票代码格式化：添加交易所前缀（sh/sz/bj）
+function formatStockCode(code){
+  code=String(code||'').trim().toLowerCase();
+  if(code.startsWith('sh')||code.startsWith('sz')||code.startsWith('bj')) return code;
+  if(/^\d{6}$/.test(code)){
+    if(code.startsWith('6')||code.startsWith('9')) return 'sh'+code;
+    if(code.startsWith('0')||code.startsWith('3')||code.startsWith('2')) return 'sz'+code;
+    if(code.startsWith('8')||code.startsWith('4')) return 'bj'+code;
+  }
+  return code;
+}
+
+// 批量获取股票实时行情（腾讯财经免费接口，JSONP方式）
+function getStockQuotes(codes,callback){
+  if(!codes||codes.length===0){ callback({}); return; }
+  const formatted=codes.map(formatStockCode);
+  const script=document.createElement('script');
+  script.src='https://qt.gtimg.cn/q='+formatted.join(',');
+  script.onload=function(){
+    const results={};
+    formatted.forEach((fcode,i)=>{
+      const varName='v_'+fcode;
+      if(window[varName]){
+        const parts=window[varName].split('~');
+        if(parts.length>5){
+          results[codes[i]]={name:parts[1],code:parts[2],price:parts[3],prevClose:parts[4],open:parts[5]};
+        }
+      }
+    });
+    try{document.body.removeChild(script);}catch(e){}
+    callback(results);
+  };
+  script.onerror=function(){
+    try{document.body.removeChild(script);}catch(e){}
+    callback({});
+  };
+  document.body.appendChild(script);
+}
+
 // 全局状态
 let allTraders;
 let styleOptions;
@@ -628,6 +667,7 @@ function renderDetail(){
   html += renderDeals();
 
   document.getElementById('detailContent').innerHTML = html;
+  updateHoldingPrices();
 }
 
 // ========== 收益日历 ==========
@@ -737,7 +777,7 @@ function renderHoldings(){
         </div>
         <div class="hc-meta">
           <span>${sector} · 首买 ${firstBuy}</span>
-          <span>成本 ${h.cost}</span>
+          <span>成本 ${h.cost} / 现价 <span class="quote-price" data-code="${h.code}">--</span></span>
         </div>
         <div class="hc-pnl">
           <span>今日 <span class="${h.todayPnl.startsWith('+')?'up':'down'}">${h.todayPnl}</span></span>
@@ -763,6 +803,21 @@ function getFirstBuyDate(code){
   const buys = deals.filter(d=>d.code===code&&d.dir==='买入');
   if(buys.length===0) return '-';
   return buys.reduce((min,d)=>d.date<min?d.date:min,buys[0].date);
+}
+
+// 批量更新持仓股票的现价
+function updateHoldingPrices(){
+  const holdings=(currentTrader&&currentTrader.holdings)||[];
+  if(holdings.length===0) return;
+  const codes=holdings.map(h=>h.code);
+  getStockQuotes(codes,function(results){
+    document.querySelectorAll('.quote-price').forEach(el=>{
+      const code=el.getAttribute('data-code');
+      if(results[code]&&results[code].price){
+        el.textContent=results[code].price;
+      }
+    });
+  });
 }
 
 // ========== 走势图 ==========
@@ -1081,13 +1136,28 @@ function onRbCodeInput(){
   const holdings=(currentTrader&&currentTrader.holdings)||[];
   const existing=holdings.find(h=>h.code===code);
   if(existing&&existing.logic) document.getElementById('rbLogic').value=existing.logic;
+  // 输入6位股票代码后自动获取现价和股票名
+  if(/^\d{6}$/.test(code)){
+    getStockQuotes([code],function(results){
+      if(results[code]){
+        if(results[code].price) document.getElementById('rbPrice').value=results[code].price;
+        if(results[code].name&&!document.getElementById('rbStock').value) document.getElementById('rbStock').value=results[code].name;
+      }
+    });
+  }
 }
 function onRbStockInput(){
   const stock=document.getElementById('rbStock').value.trim();
-  for(const c in STOCK_MAP){ if(STOCK_MAP[c]===stock){document.getElementById('rbCode').value=c;break;} }
+  let foundCode='';
+  for(const c in STOCK_MAP){ if(STOCK_MAP[c]===stock){document.getElementById('rbCode').value=c;foundCode=c;break;} }
   const holdings=(currentTrader&&currentTrader.holdings)||[];
   const existing=holdings.find(h=>h.stock===stock);
   if(existing&&existing.logic) document.getElementById('rbLogic').value=existing.logic;
+  if(foundCode&&/^\d{6}$/.test(foundCode)){
+    getStockQuotes([foundCode],function(results){
+      if(results[foundCode]&&results[foundCode].price) document.getElementById('rbPrice').value=results[foundCode].price;
+    });
+  }
 }
 function confirmRebalance(){
   const code=document.getElementById('rbCode').value.trim();
