@@ -988,7 +988,6 @@ function renderChart(){
   const rebalanceDots=rebalanceIdx.filter(i=>i<comboVals.length).map(i=>({x:(i*trendW/(trendPoints-1)).toFixed(1),y:trendY(comboVals[i]).toFixed(1)}));
   const zeroY=trendY(0);
   const comboFillPath=comboPath+'L'+trendW+','+zeroY+' L0,'+zeroY+' Z';
-  const deals = (currentTrader && currentTrader.deals) || [];
   const rebalanceTotal=deals.length;
   const rebalanceWin=deals.filter(d=>d.dir==='卖出').length;
   const rebalanceWinRate=rebalanceTotal>0?(rebalanceWin/rebalanceTotal*100).toFixed(2)+'%':'0.00%';
