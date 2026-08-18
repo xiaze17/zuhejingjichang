@@ -1,0 +1,32 @@
+{
+  "name": "组合竞技场",
+  "short_name": "组合竞技场",
+  "description": "量化交易组合竞技场 - 手机端组合管理与追踪",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0d0d",
+  "theme_color": "#0d0d0d",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "icon-1024.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-1024.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

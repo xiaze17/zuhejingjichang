@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-1024.png">
+<meta name="apple-mobile-web-app-title" content="组合竞技场">
+<title>组合竞技场</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0a0a;--bg2:#111111;--bg3:#1a1a1a;--bg4:#222222;
+  --border:#2a2a2a;--border2:#333333;
+  --text:#e0e0e0;--text2:#999;--text3:#666;
+  --red:#ff4d4f;--red2:#ff7875;--green:#52c41a;--green2:#73d13d;
+  --gold:#d4af37;--gold2:#f0c040;--blue:#1890ff;--orange:#fa8c16
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* 顶部导航 */
+.topbar{height:50px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;position:sticky;top:0;z-index:100;padding-top:env(safe-area-inset-top)}
+.topbar-title{font-size:17px;font-weight:700;flex:1;text-align:center;color:var(--gold);letter-spacing:1px}
+.topbar-back{width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--text2);cursor:pointer;flex-shrink:0}
+.topbar-action{width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text2);cursor:pointer;flex-shrink:0}
+
+/* 主内容区 */
+.app-container{height:calc(100vh - 50px);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+.page{display:none}
+.page.active{display:block}
+
+/* 冠军区 */
+.champions{padding:12px}
+.champ-scroll{display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;padding-bottom:4px}
+.champ-scroll::-webkit-scrollbar{display:none}
+.champ-card{flex:0 0 calc(50% - 5px);min-width:160px;scroll-snap-align:start;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px}
+.champ-card:first-child{flex:0 0 calc(50% - 5px)}
+.champ-avatar{flex-shrink:0}
+.champ-info{flex:1;min-width:0}
+.champ-label{font-size:10px;color:var(--text3);margin-bottom:3px}
+.champ-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.champ-ret{font-size:16px;font-weight:700;flex-shrink:0}
+
+/* 组合卡片列表 */
+.portfolio-list{padding:0 12px}
+.portfolio-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;transition:all .2s}
+.portfolio-card:active{transform:scale(0.98);border-color:var(--gold)}
+.pc-header{display:flex;align-items:center;gap:10px;padding:12px}
+.pc-rank{width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--text3);flex-shrink:0}
+.pc-avatar{flex-shrink:0}
+.pc-info{flex:1;min-width:0}
+.pc-name{font-size:15px;font-weight:600;color:var(--gold);margin-bottom:3px}
+.pc-tags{display:flex;flex-wrap:wrap;gap:4px}
+.pc-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px;border-top:1px solid var(--border);background:var(--bg3)}
+.pc-stat{text-align:center}
+.pc-stat-label{font-size:10px;color:var(--text3);margin-bottom:2px}
+.pc-stat-val{font-size:13px;font-weight:600}
+.pc-actions{display:flex;border-top:1px solid var(--border)}
+.pc-action-btn{flex:1;padding:10px;text-align:center;font-size:12px;color:var(--text2);cursor:pointer;transition:background .15s}
+.pc-action-btn:active{background:var(--bg3)}
+.pc-action-btn + .pc-action-btn{border-left:1px solid var(--border)}
+.pc-action-btn.del:active{color:var(--red)}
+
+/* 创建按钮 */
+.create-section{padding:16px 12px;text-align:center}
+.create-btn{background:linear-gradient(135deg,var(--gold),#b8941f);color:#000;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.create-btn:active{transform:scale(0.96);box-shadow:0 0 20px rgba(212,175,55,.4)}
+
+/* 徽章 */
+.badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:500;white-space:nowrap}
+.badge-red{background:rgba(255,77,79,.15);color:var(--red)}
+.badge-green{background:rgba(82,196,26,.15);color:var(--green)}
+.badge-gold{background:rgba(212,175,55,.15);color:var(--gold)}
+.badge-blue{background:rgba(24,144,255,.15);color:var(--blue)}
+
+.up{color:var(--red)}.down{color:var(--green)}
+
+/* 详情页 - 基本信息 */
+.detail-hero{padding:16px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.dh-top{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px}
+.dh-avatar{flex-shrink:0}
+.dh-main{flex:1;min-width:0}
+.dh-name{font-size:20px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dh-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.dh-desc{font-size:12px;color:var(--text3);line-height:1.7;padding:8px 10px;background:var(--bg3);border-radius:6px;border:1px dashed var(--border);cursor:pointer}
+.dh-nav{flex-shrink:0;display:flex;flex-direction:column;gap:6px}
+.dh-nav-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:4px;color:var(--text3);font-size:14px;cursor:pointer}
+
+.dh-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dh-stat{text-align:center;padding:8px 0;background:var(--bg3);border-radius:6px}
+.dh-stat-label{font-size:10px;color:var(--text3);margin-bottom:3px}
+.dh-stat-val{font-size:16px;font-weight:700}
+.dh-stat-val.big{font-size:22px}
+
+/* 详情页 - 区块 */
+.detail-section{margin:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.ds-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.ds-title{font-size:14px;font-weight:600}
+.ds-action{font-size:12px;color:var(--gold);cursor:pointer;padding:4px 10px;background:rgba(212,175,55,.1);border-radius:4px}
+.ds-body{padding:12px 14px}
+
+/* 收益日历 */
+.cal-view-switch{display:flex;gap:6px;margin-bottom:10px}
+.cal-view-btn{flex:1;padding:6px 0;text-align:center;font-size:12px;border-radius:4px;cursor:pointer;color:var(--text3);background:var(--bg3);border:1px solid transparent}
+.cal-view-btn.active{color:var(--gold);background:rgba(212,175,55,.1);border-color:var(--gold)}
+.cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:13px}
+.cal-nav-arrow{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:16px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:10px}
+.cal-weekday{font-size:10px;color:var(--text3);text-align:center;padding:4px 0}
+.cal-cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;border-radius:4px}
+.cal-cell.empty{background:transparent}
+.cal-cell.nodata{background:var(--bg3);color:var(--text3)}
+.cal-cell.up{background:rgba(255,77,79,.2);color:var(--red)}
+.cal-cell.down{background:rgba(82,196,26,.2);color:var(--green)}
+.cal-cell.today{border:1px solid var(--gold)}
+.cal-cell .day{font-size:10px}
+.cal-cell .ret{font-size:9px;font-weight:600;margin-top:1px}
+.cal-month-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.cal-month-cell{aspect-ratio:1.3;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;border-radius:4px}
+.cal-month-cell.nodata{background:var(--bg3);color:var(--text3)}
+.cal-month-cell.up{background:rgba(255,77,79,.2);color:var(--red)}
+.cal-month-cell.down{background:rgba(82,196,26,.2);color:var(--green)}
+.cal-month-cell .ret{font-size:11px;font-weight:600;margin-top:3px}
+.cal-year-cell{background:rgba(255,77,79,.2);color:var(--red);padding:20px;border-radius:6px;text-align:center}
+.cal-summary{display:flex;justify-content:space-between;font-size:12px;color:var(--text3);padding-top:8px;border-top:1px solid var(--border)}
+
+/* 持仓卡片 */
+.holding-card{background:var(--bg3);border-radius:6px;padding:10px 12px;margin-bottom:8px}
+.hc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.hc-name{font-size:14px;font-weight:600}
+.hc-code{font-size:11px;color:var(--text3);margin-left:6px}
+.hc-ratio{font-size:14px;font-weight:700;color:var(--gold)}
+.hc-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px}
+.hc-pnl{display:flex;justify-content:space-between;font-size:12px}
+.hc-logic{font-size:11px;color:var(--text3);margin-top:6px;padding-top:6px;border-top:1px solid var(--border);line-height:1.5}
+.holding-empty{text-align:center;padding:24px;color:var(--text3);font-size:13px}
+.holding-footer{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--text3)}
+
+/* 走势图 */
+.chart-container{width:100%;overflow-x:auto}
+.chart-container svg{width:100%;height:auto;min-width:320px}
+.chart-legend{display:flex;gap:14px;margin-bottom:10px;font-size:11px;flex-wrap:wrap}
+.chart-legend-item{display:flex;align-items:center;gap:5px}
+.chart-legend-line{width:14px;height:2px}
+.chart-legend-dot{width:8px;height:8px;border-radius:50%}
+.period-switch{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.period-btn{padding:5px 12px;font-size:12px;border-radius:4px;cursor:pointer;background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
+.period-btn.active{background:var(--gold);color:#000;border-color:var(--gold);font-weight:600}
+.rebalance-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.rs-item{text-align:center}
+.rs-label{font-size:10px;color:var(--text3);margin-bottom:3px}
+.rs-val{font-size:16px;font-weight:700}
+
+/* 成交记录 */
+.deal-date-group{background:var(--bg3);padding:6px 14px;font-size:12px;font-weight:600;color:var(--text2)}
+.deal-item{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);gap:10px}
+.deal-time{font-size:11px;color:var(--text3);width:48px;flex-shrink:0}
+.deal-dir{flex-shrink:0}
+.deal-stock{flex:1;min-width:0}
+.deal-stock-name{font-size:13px;font-weight:500}
+.deal-stock-code{font-size:10px;color:var(--text3)}
+.deal-info{text-align:right;flex-shrink:0}
+.deal-price{font-size:13px;font-weight:600}
+.deal-ratio{font-size:10px;color:var(--text3)}
+.deal-reason{font-size:10px;color:var(--text3);margin-top:2px}
+
+/* 底部弹窗 */
+.modal-mask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:1000;display:none;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-mask.show{display:flex;opacity:1;pointer-events:auto}
+.modal-sheet{background:var(--bg2);border-radius:16px 16px 0 0;width:100%;max-width:500px;padding:20px 16px;padding-bottom:calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-height:85vh;overflow-y:auto}
+.modal-mask.show .modal-sheet{transform:translateY(0)}
+.modal-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px}
+.modal-title{font-size:17px;font-weight:600;margin-bottom:18px;text-align:center}
+.modal-field{margin-bottom:16px}
+.modal-field label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px}
+.modal-field input,.modal-field textarea{width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;outline:none;box-sizing:border-box;font-family:inherit}
+.modal-field input:focus,.modal-field textarea:focus{border-color:var(--gold)}
+.modal-row{display:flex;gap:10px}
+.modal-row .modal-field{flex:1}
+.style-buttons{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.style-btn{padding:7px 14px;border-radius:6px;font-size:13px;cursor:pointer;transition:all .15s;background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.style-btn.selected{background:linear-gradient(135deg,var(--gold),#b8941f);color:#000;border-color:var(--gold);font-weight:600}
+.style-preview{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;min-height:28px;padding:8px;background:var(--bg3);border-radius:6px}
+.style-preview-empty{font-size:12px;color:var(--text3)}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.modal-btn{flex:1;padding:12px;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.modal-btn:active{transform:scale(0.97)}
+.modal-btn.cancel{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.modal-btn.confirm{background:linear-gradient(135deg,var(--gold),#b8941f);color:#000}
+.modal-btn.danger{background:linear-gradient(135deg,#ff4d4f,#cf1322);color:#fff}
+.modal-btn.small{flex:none;padding:8px 16px;font-size:13px}
+
+/* 搜索框 */
+.search-box{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin:12px}
+.search-box input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:14px;margin-left:8px}
+.search-box input::placeholder{color:var(--text3)}
+
+/* 组合选择器（详情页侧边） */
+.combo-selector{position:fixed;top:0;left:0;width:80%;max-width:320px;height:100%;background:var(--bg2);z-index:999;transform:translateX(-100%);transition:transform .3s;overflow-y:auto;padding-top:env(safe-area-inset-top)}
+.combo-selector.show{transform:translateX(0)}
+.combo-selector-mask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:998;display:none;opacity:0;pointer-events:none;transition:opacity .3s}
+.combo-selector-mask.show{display:block;opacity:1;pointer-events:auto}
+.cs-header{padding:14px 16px;border-bottom:1px solid var(--border);font-size:15px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.cs-item{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px}
+.cs-item.active{background:var(--bg3);border-left:3px solid var(--gold)}
+.cs-item-info{flex:1;min-width:0}
+.cs-item-name{font-size:14px;font-weight:600;margin-bottom:2px}
+.cs-item-strategy{font-size:11px;color:var(--text3)}
+.cs-item-ret{font-size:14px;font-weight:700;flex-shrink:0}
+
+/* 空状态 */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3)}
+.empty-state-icon{font-size:48px;margin-bottom:12px;opacity:.5}
+.empty-state-text{font-size:14px}
+
+/* 滚动条 */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* 排序按钮 */
+.sort-controls{display:flex;gap:8px;padding:0 12px 12px}
+.sort-btn{flex:1;padding:8px;font-size:12px;text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer}
+.sort-btn.active{color:var(--gold);border-color:var(--gold)}
+</style>
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<div class="topbar">
+  <div class="topbar-back" id="backBtn" style="display:none" onclick="goBack()">‹</div>
+  <div class="topbar-title" id="topTitle">组合竞技场</div>
+  <div class="topbar-action" id="topAction" style="display:none" onclick="toggleComboSelector()">☰</div>
+</div>
+
+<!-- 主内容 -->
+<div class="app-container" id="appContainer">
+  <!-- 组合列表页 -->
+  <div class="page active" id="pageList">
+    <!-- 组合列表 -->
+    <div class="portfolio-list" id="portfolioList" style="padding-top:12px"></div>
+    <!-- 创建按钮 -->
+    <div class="create-section">
+      <button class="create-btn" onclick="openCreateModal()">+ 创建组合</button>
+    </div>
+  </div>
+
+  <!-- 组合详情页 -->
+  <div class="page" id="pageDetail">
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<!-- 组合选择侧边栏 -->
+<div class="combo-selector-mask" id="comboSelectorMask" onclick="toggleComboSelector()"></div>
+<div class="combo-selector" id="comboSelector">
+  <div class="cs-header">
+    <span>选择组合</span>
+    <span style="color:var(--text3);font-size:18px;cursor:pointer" onclick="toggleComboSelector()">×</span>
+  </div>
+  <div class="search-box">
+    <span style="color:var(--text3)">🔍</span>
+    <input type="text" id="comboSearchInput" placeholder="搜索组合" oninput="renderComboSelector()">
+  </div>
+  <div id="comboSelectorList"></div>
+</div>
+
+<!-- 创建/编辑组合弹窗 -->
+<div class="modal-mask" id="portfolioModal" onclick="closePortfolioModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">创建组合</div>
+    <div class="modal-field">
+      <label>组合名称</label>
+      <input type="text" id="portfolioName" placeholder="请输入组合名称">
+    </div>
+    <div class="modal-field">
+      <label>风格标签（输入或点击选择，可多选）</label>
+      <input type="text" id="styleInput" placeholder="输入风格，逗号分隔" oninput="onStyleInputChange()" autocomplete="off">
+      <div class="style-buttons" id="styleButtons"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">已选风格：</div>
+      <div class="style-preview" id="stylePreview"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel small" onclick="deleteSelectedStyles()">删除风格</button>
+      <button class="modal-btn cancel" onclick="closePortfolioModal()">取消</button>
+      <button class="modal-btn confirm" id="modalConfirmBtn" onclick="confirmPortfolio()">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 删除确认弹窗 -->
+<div class="modal-mask" id="deleteModal" onclick="closeDeleteModal(event)">
+  <div class="modal-sheet" style="max-height:50vh">
+    <div class="modal-handle"></div>
+    <div class="modal-title">删除确认</div>
+    <div style="text-align:center;padding:16px 0;font-size:15px;color:var(--text2)">
+      确定要删除组合「<span id="deleteTargetName" style="color:var(--gold);font-weight:600"></span>」吗？
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeDeleteModal()">取消</button>
+      <button class="modal-btn danger" onclick="confirmDelete()">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 调仓弹窗 -->
+<div class="modal-mask" id="rebalanceModal" onclick="closeRebalanceModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">调仓</div>
+    <div class="modal-field">
+      <label>代码 / 股票名称</label>
+      <div class="modal-row">
+        <div class="modal-field" style="margin-bottom:0">
+          <input type="text" id="rbCode" placeholder="代码" oninput="onRbCodeInput()" autocomplete="off">
+        </div>
+        <div class="modal-field" style="margin-bottom:0">
+          <input type="text" id="rbStock" placeholder="股票名称" oninput="onRbStockInput()" autocomplete="off">
+        </div>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>成交价</label>
+      <input type="number" id="rbPrice" placeholder="成交价" step="0.01">
+    </div>
+    <div class="modal-field">
+      <label>仓位（%）</label>
+      <input type="number" id="rbRatio" placeholder="如20表示20%" step="0.1">
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">当前剩余仓位：<span id="rbRemaining" style="font-weight:600;color:var(--gold)">0.0%</span></div>
+    </div>
+    <div class="modal-field">
+      <label>逻辑（选填）</label>
+      <input type="text" id="rbLogic" placeholder="选填">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeRebalanceModal()">取消</button>
+      <button class="modal-btn confirm" onclick="confirmRebalance()">确认调仓</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 数据定义 ==========
+const DEFAULT_TRADERS=[
+  {rank:1,name:'满仓·放量剑',strategy:'放量突破跟随',nav:'1.4312',ret:'+43.12%',today:'-1.83%',month:'+8.59%',win:'55%',ratio:'2.48',draw:'-9.13%',hold:0,deal:40,days:21,realized:'+43.12%',color:'#13c2c2',created:'2026-06-01',tags:['稳健型','放量','重仓','累计冠军'],desc:'捕捉板块龙头，突破缩量平台中均值蕴酿升，涨幅超5%的趋势形成后买入，错单止损原则：单只可获可盈，当日收益突变，禁止追高第二天。'},
+  {rank:2,name:'满仓·绝地反',strategy:'超跌反弹满仓',nav:'1.2804',ret:'+28.04%',today:'+2.66%',month:'+5.21%',win:'61.1%',ratio:'2.52',draw:'-5.26%',hold:1,deal:37,days:21,realized:'+25.25%',color:'#722ed1',created:'2026-06-01',tags:['激进型','超跌','反弹'],desc:'专做超跌反弹，连续下跌后出现止跌信号时满仓介入，快进快出。'},
+  {rank:3,name:'趋势满仓·猎风',strategy:'趋势股短满仓',nav:'1.2343',ret:'+23.43%',today:'+5.77%',month:'+6.77%',win:'52.6%',ratio:'1.90',draw:'-9.17%',hold:1,deal:39,days:21,realized:'+17.32%',color:'#faad14',created:'2026-06-01',tags:['稳健型','趋势','今日最佳'],desc:'追踪强势趋势股，沿5日线持有，跌破10日线止盈止损。'},
+  {rank:4,name:'满仓·二波枪',strategy:'龙回头二波',nav:'1.2218',ret:'+22.18%',today:'+4.31%',month:'+4.15%',win:'47.4%',ratio:'2.17',draw:'-8.24%',hold:0,deal:38,days:21,realized:'+22.18%',color:'#eb2f96',created:'2026-06-01',tags:['激进型','龙头','二波'],desc:'龙头股第一波回调后做第二波，缩量回调至支撑位介入。'},
+  {rank:5,name:'快枪手·闪电',strategy:'消息面突击',nav:'1.1917',ret:'+19.17%',today:'+1.09%',month:'+3.88%',win:'60%',ratio:'1.90',draw:'-8.11%',hold:1,deal:51,days:21,realized:'+17.58%',color:'#fa8c16',created:'2026-06-01',tags:['激进型','短线','消息'],desc:'基于消息面快速出击，早盘集合竞价选股，当日或次日了结。'},
+  {rank:6,name:'满仓·情绪锋',strategy:'高情绪最强联动',nav:'1.1709',ret:'+17.09%',today:'+2.78%',month:'+3.12%',win:'63.2%',ratio:'1.54',draw:'-6.83%',hold:1,deal:39,days:21,realized:'+14.27%',color:'#f5222d',created:'2026-06-01',tags:['稳健型','情绪','联动'],desc:'监测市场情绪周期，在情绪上升期满仓最强联动股。'},
+  {rank:7,name:'龙头信徒·首阴',strategy:'龙头战法',nav:'1.1412',ret:'+14.12%',today:'+4.32%',month:'+2.95%',win:'69.6%',ratio:'1.92',draw:'-7.57%',hold:1,deal:46,days:21,realized:'+11.66%',color:'#2f54eb',created:'2026-06-01',tags:['稳健型','龙头','首阴'],desc:'龙头股首次阴线回调时低吸，博弈反包或二波。'},
+  {rank:8,name:'回马枪·二郎',strategy:'回调低吸',nav:'0.8597',ret:'-14.03%',today:'-2.15%',month:'-3.21%',win:'42.3%',ratio:'0.85',draw:'-19.69%',hold:2,deal:33,days:21,realized:'-14.03%',color:'#52c41a',created:'2026-06-01',tags:['保守型','回调','低吸'],desc:'强势股回调至关键支撑位低吸，等待反弹。'},
+  {rank:9,name:'涓流澄海',strategy:'激进型、放量、重仓',nav:'1.2826',ret:'+28.26%',today:'+0.45%',month:'+0.82%',win:'50.0%',ratio:'3.69',draw:'-8.42%',hold:0,deal:32,days:276,realized:'+28.26%',color:'#722ed1',created:'2025-07-01',tags:['激进型','放量','重仓'],desc:'激进型放量重仓策略：5日均线上穿10日均线且放量时买入，死叉或回撤7%止损。持仓工业富联、东山精密、紫光股份，单票仓位40%，最多同时持有3只。'}
+];
+
+const STOCK_MAP = {
+  '002236':'大华股份','000938':'紫光股份','601138':'工业富联','002384':'东山精密',
+  '600519':'贵州茅台','000001':'平安银行','000651':'格力电器','601318':'中国平安',
+  '600036':'招商银行','000858':'五粮液','000002':'万科A','300750':'宁德时代',
+  '688981':'中芯国际','688256':'寒武纪','300308':'中际旭创','002230':'科大讯飞',
+  '603019':'中科曙光','000977':'浪潮信息','688825':'长鑫科技','002594':'比亚迪',
+  '300059':'东方财富','601668':'中国建筑'
+};
+
+// 全局状态
+let allTraders;
+let styleOptions;
+let currentTrader = null;
+let currentPage = 'list';
+let editingIndex = -1;
+let buttonSelectedStyles = [];
+let pendingDeleteName = null;
+let calendarView = 'day';
+let calendarMonth = 8;
+let calendarYear = 2026;
+let yieldPeriod = '3m';
+
+// 默认持仓和成交数据
+const DEFAULT_HOLDINGS = [
+  {code:'002236',stock:'大华股份',cost:'16.37',ratio:'40.0%',todayPnl:'+0.15%',cumPnl:'+0.00%',logic:'尾盘建仓加仓，安防龙头'},
+];
+const DEFAULT_DEALS = [
+  {date:'2026-08-17',time:'14:54:00',dir:'买入',stock:'大华股份',code:'002236',price:'16.39',posRatio:'20.0% --> 40.0%',reason:'加仓'},
+  {date:'2026-08-17',time:'14:37:00',dir:'买入',stock:'大华股份',code:'002236',price:'16.35',posRatio:'0.0% --> 20.0%',reason:'尾盘建仓'},
+  {date:'2026-08-17',time:'09:30:00',dir:'卖出',stock:'工业富联',code:'601138',price:'67.00',posRatio:'48.0% --> 0.0%',reason:'死叉卖出'},
+  {date:'2026-08-06',time:'09:30:00',dir:'买入',stock:'工业富联',code:'601138',price:'65.55',posRatio:'0.0% --> 48.0%',reason:'金叉放量买入'},
+  {date:'2026-07-01',time:'09:30:00',dir:'卖出',stock:'东山精密',code:'002384',price:'262.35',posRatio:'48.0% --> 0.0%',reason:'死叉卖出'},
+  {date:'2026-06-18',time:'09:30:00',dir:'买入',stock:'工业富联',code:'601138',price:'71.35',posRatio:'48.0% --> 96.0%',reason:'金叉放量买入'},
+  {date:'2026-06-16',time:'09:30:00',dir:'买入',stock:'东山精密',code:'002384',price:'244.00',posRatio:'0.0% --> 48.0%',reason:'金叉放量买入'},
+];
+
+// 收益数据
+const dailyPnlData = {
+  '2025-7': {29:{ret:0.52,money:2580.7},30:{ret:-0.56,money:-2800.0},31:{ret:-0.03,money:-160.0}},
+  '2025-8': {1:{ret:-0.37,money:-1840.0},4:{ret:-0.47,money:-2314.69},13:{ret:2.53,money:12541.3},14:{ret:-3.17,money:-16100.0},15:{ret:-1.98,money:-9730.0},18:{ret:1.84,money:8855.0},19:{ret:-1.46,money:-7175.0},20:{ret:-1.33,money:-6442.24}},
+  '2025-9': {3:{ret:1.52,money:7257.0},4:{ret:0.32,money:1565.74}},
+  '2025-10': {27:{ret:0.28,money:1370.29},28:{ret:-0.32,money:-1564.0},29:{ret:0.25,money:1224.0},30:{ret:-0.57,money:-2788.0},31:{ret:-1.43,money:-6936.0}},
+  '2025-11': {3:{ret:-0.14,money:-690.55}},
+  '2025-12': {10:{ret:0.15,money:726.64},11:{ret:-0.87,money:-4163.0},12:{ret:2.96,money:14030.0},15:{ret:-2.24,money:-10925.0},16:{ret:-0.93,money:-4439.0},17:{ret:1.57,money:7429.0},18:{ret:-2.43,money:-11638.0},19:{ret:0.29,money:1353.32},24:{ret:1.13,money:5291.02},25:{ret:0.95,money:4505.0},26:{ret:-1.53,money:-7351.0},29:{ret:0.84,money:3983.0},30:{ret:-0.65,money:-3083.0},31:{ret:-1.55,money:-7323.0}},
+  '2026-1': {5:{ret:2.09,money:9703.0},6:{ret:0.62,money:2950.0},7:{ret:-0.56,money:-2693.84},8:{ret:0.47,money:2233.0},9:{ret:0.35,money:1694.0},12:{ret:1.75,money:8393.0},13:{ret:-1.31,money:-6391.0},14:{ret:1.46,money:7007.0},15:{ret:-0.3,money:-1463.0},16:{ret:0.28,money:1386.0},19:{ret:1.18,money:5775.0},20:{ret:-1.67,money:-8239.0},21:{ret:-0.25,money:-1232.0},22:{ret:-0.32,money:-1540.0},23:{ret:0.06,money:299.44}},
+  '2026-2': {12:{ret:0.7,money:3362.75},13:{ret:-0.19,money:-912.0},24:{ret:-0.06,money:-304.0},25:{ret:-0.28,money:-1368.0},26:{ret:0.71,money:3420.0},27:{ret:0.34,money:1672.0}},
+  '2026-3': {2:{ret:-1.35,money:-6612.0},3:{ret:0.11,money:531.33},12:{ret:2.4,money:11569.37},13:{ret:-1.12,money:-5544.0},16:{ret:-0.65,money:-3157.0},17:{ret:-1.49,money:-7238.0},18:{ret:2.98,money:14245.0},19:{ret:0.73,money:3619.0},20:{ret:-0.92,money:-4543.0},23:{ret:-1.22,money:-6006.0},24:{ret:0.48,money:2310.0},25:{ret:1.01,money:4928.0},26:{ret:-1.47,money:-7238.0},27:{ret:-0.82,money:-4003.02},31:{ret:1.98,money:9537.43}},
+  '2026-4': {1:{ret:1.48,money:7254.0},2:{ret:-1.03,money:-5148.0},3:{ret:0.14,money:702.0},7:{ret:0.32,money:1560.0},8:{ret:4.13,money:20474.88},9:{ret:-0.34,money:-1777.0},10:{ret:1.24,money:6403.0},13:{ret:1.13,money:5887.0},14:{ret:1.81,money:9556.0},15:{ret:-1.36,money:-7292.0},16:{ret:2.02,money:10669.0},17:{ret:0.62,money:3354.0},20:{ret:1.42,money:7715.0},21:{ret:-1.22,money:-6710.0},22:{ret:7.28,money:39621.0},23:{ret:2.42,money:14129.0},24:{ret:-1.74,money:-10401.0},27:{ret:2.66,money:15609.0},28:{ret:-0.18,money:-1114.0},29:{ret:-0.15,money:-930.0},30:{ret:-2.76,money:-16579.0}},
+  '2026-5': {6:{ret:-0.06,money:-326.0},7:{ret:2.1,money:12273.07},8:{ret:0.32,money:1896.0},11:{ret:-1.95,money:-11692.0},12:{ret:-1.35,money:-7900.0},13:{ret:7.33,money:42405.57},14:{ret:-0.14,money:-838.74},15:{ret:-0.58,money:-3626.0},18:{ret:0.82,money:5032.0},19:{ret:-0.25,money:-1554.0},20:{ret:-0.24,money:-1517.0},21:{ret:-1.59,money:-9805.0},22:{ret:1.01,money:6142.0},25:{ret:0.47,money:2908.64},27:{ret:0.09,money:557.29},28:{ret:2.78,money:17220.0},29:{ret:-0.88,money:-5600.0}},
+  '2026-6': {1:{ret:0.19,money:1225.0},2:{ret:3.47,money:21910.0},3:{ret:0.56,money:3640.0},4:{ret:-1.33,money:-8750.0},5:{ret:-2.43,money:-15715.0},8:{ret:-1.98,money:-12530.0},9:{ret:2.41,money:14910.0},10:{ret:-1.05,money:-6642.3},16:{ret:0.79,money:4986.8},17:{ret:1.24,money:7860.0},18:{ret:5.91,money:37890.94},22:{ret:0.06,money:430.0},23:{ret:-4.82,money:-32738.0},24:{ret:1.82,money:11758.0},25:{ret:2.95,money:19426.0},26:{ret:-5.88,money:-39852.0},29:{ret:-2.23,money:-14239.71},30:{ret:2.05,money:12760.0}},
+  '2026-7': {1:{ret:-0.03,money:-209.88}},
+  '2026-8': {6:{ret:1.61,money:10261.27},7:{ret:-0.05,money:-342.0},10:{ret:0.59,money:3800.0},11:{ret:-1.85,money:-12046.0},12:{ret:-0.24,money:-1558.0},13:{ret:-0.22,money:-1406.0},14:{ret:0.57,money:3648.0},17:{ret:0.45,money:2874.32}},
+};
+const monthlyPnlData = {
+  '2025-7': {ret:-0.08,money:-379.3,up:false,win:1,loss:2},
+  '2025-8': {ret:-4.44,money:-22205.63,up:false,win:2,loss:6},
+  '2025-9': {ret:1.85,money:8822.74,up:true,win:2,loss:0},
+  '2025-10': {ret:-1.79,money:-8693.71,up:false,win:2,loss:3},
+  '2025-11': {ret:-0.14,money:-690.55,up:false,win:0,loss:1},
+  '2025-12': {ret:-2.43,money:-11604.02,up:false,win:7,loss:7},
+  '2026-1': {ret:3.84,money:17881.6,up:true,win:9,loss:6},
+  '2026-2': {ret:1.22,money:5870.75,up:true,win:3,loss:3},
+  '2026-3': {ret:0.49,money:2399.11,up:true,win:7,loss:8},
+  '2026-4': {ret:18.92,money:92982.88,up:true,win:13,loss:8},
+  '2026-5': {ret:7.8,money:45575.83,up:true,win:8,loss:9},
+  '2026-6': {ret:1.0,money:6329.73,up:true,win:11,loss:7},
+  '2026-7': {ret:-0.03,money:-209.88,up:false,win:0,loss:1},
+  '2026-8': {ret:0.82,money:5231.59,up:true,win:4,loss:4},
+};
+const yearlyPnlData = {
+  '2025': {ret:-6.95,money:-34750.47,up:false,win:1,loss:5},
+  '2026': {ret:37.84,money:176061.61,up:true,win:7,loss:1},
+};
+
+// ========== 初始化 ==========
+function init(){
+  try{
+    const saved = localStorage.getItem('arena_allTraders');
+    allTraders = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_TRADERS));
+  }catch(e){
+    allTraders = JSON.parse(JSON.stringify(DEFAULT_TRADERS));
+  }
+  // 确保每个组合都有 holdings 和 deals 字段
+  allTraders.forEach(t=>{
+    if(!t.holdings) t.holdings = JSON.parse(JSON.stringify(DEFAULT_HOLDINGS));
+    if(!t.deals) t.deals = JSON.parse(JSON.stringify(DEFAULT_DEALS));
+  });
+  styleOptions = [...new Set(allTraders.flatMap(t=>t.tags||[]))];
+  renderList();
+}
+
+function saveTraders(){
+  try{ localStorage.setItem('arena_allTraders', JSON.stringify(allTraders)); }catch(e){}
+}
+
+function parsePct(s){ return parseFloat((s||'0').replace(/[+%]/g,'')) || 0; }
+
+// ========== 机器人头像 ==========
+function robotAvatar(color, size){
+  size = size || 36;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 40 40">
+    <rect x="8" y="10" width="24" height="20" rx="4" fill="${color}" opacity="0.9"/>
+    <circle cx="15" cy="18" r="2.5" fill="#fff"/>
+    <circle cx="25" cy="18" r="2.5" fill="#fff"/>
+    <rect x="14" y="24" width="12" height="2" rx="1" fill="#fff" opacity="0.7"/>
+    <line x1="20" y1="4" x2="20" y2="10" stroke="${color}" stroke-width="2"/>
+    <circle cx="20" cy="3" r="2" fill="${color}"/>
+    <rect x="4" y="16" width="4" height="8" rx="2" fill="${color}" opacity="0.7"/>
+    <rect x="32" y="16" width="4" height="8" rx="2" fill="${color}" opacity="0.7"/>
+  </svg>`;
+}
+
+// ========== 页面切换 ==========
+function showPage(page){
+  currentPage = page;
+  document.getElementById('pageList').classList.toggle('active', page==='list');
+  document.getElementById('pageDetail').classList.toggle('active', page==='detail');
+  document.getElementById('backBtn').style.display = page==='detail' ? 'flex' : 'none';
+  document.getElementById('topAction').style.display = page==='detail' ? 'flex' : 'none';
+  document.getElementById('topTitle').textContent = page==='list' ? '组合竞技场' : (currentTrader ? currentTrader.name : '组合详情');
+  document.getElementById('appContainer').scrollTop = 0;
+}
+
+function goBack(){ showPage('list'); }
+
+function moveUp(name){
+  const idx = allTraders.findIndex(t=>t.name===name);
+  if(idx<=0) return;
+  [allTraders[idx-1],allTraders[idx]] = [allTraders[idx],allTraders[idx-1]];
+  saveTraders();
+  renderList();
+}
+
+function moveDown(name){
+  const idx = allTraders.findIndex(t=>t.name===name);
+  if(idx<0||idx>=allTraders.length-1) return;
+  [allTraders[idx+1],allTraders[idx]] = [allTraders[idx],allTraders[idx+1]];
+  saveTraders();
+  renderList();
+}
+function renderList(){
+  const traders = allTraders;
+  // 组合列表
+  document.getElementById('portfolioList').innerHTML = traders.map((t,i)=>`
+    <div class="portfolio-card">
+      <div class="pc-header" onclick="openDetail('${t.name}')">
+        <div class="pc-rank">${i+1}</div>
+        <div class="pc-avatar">${robotAvatar(t.color,36)}</div>
+        <div class="pc-info">
+          <div class="pc-name">${t.name}</div>
+          <div class="pc-tags">${(t.tags||[]).slice(0,3).map(tag=>`<span class="badge badge-gold">${tag}</span>`).join('')}</div>
+        </div>
+      </div>
+      <div class="pc-stats">
+        <div class="pc-stat">
+          <div class="pc-stat-label">今日</div>
+          <div class="pc-stat-val ${t.today.startsWith('+')?'up':'down'}">${t.today}</div>
+        </div>
+        <div class="pc-stat">
+          <div class="pc-stat-label">本月</div>
+          <div class="pc-stat-val ${t.month.startsWith('+')?'up':'down'}">${t.month}</div>
+        </div>
+        <div class="pc-stat">
+          <div class="pc-stat-label">累计</div>
+          <div class="pc-stat-val ${t.ret.startsWith('+')?'up':'down'}">${t.ret}</div>
+        </div>
+        <div class="pc-stat">
+          <div class="pc-stat-label">胜率</div>
+          <div class="pc-stat-val">${t.win}</div>
+        </div>
+      </div>
+      <div class="pc-actions">
+        <div class="pc-action-btn" onclick="event.stopPropagation();openEdit(${allTraders.findIndex(x=>x.name===t.name)})">编辑</div>
+        <div class="pc-action-btn" onclick="event.stopPropagation();moveUp('${t.name}')">↑</div>
+        <div class="pc-action-btn" onclick="event.stopPropagation();moveDown('${t.name}')">↓</div>
+        <div class="pc-action-btn del" onclick="event.stopPropagation();openDelete('${t.name}')">删除</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function moveUp(name){
+  const idx = allTraders.findIndex(t=>t.name===name);
+  if(idx<=0) return;
+  [allTraders[idx-1],allTraders[idx]] = [allTraders[idx],allTraders[idx-1]];
+  saveTraders();
+  sortMode='custom';
+  document.querySelectorAll('.sort-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  renderList();
+}
+
+function moveDown(name){
+  const idx = allTraders.findIndex(t=>t.name===name);
+  if(idx<0||idx>=allTraders.length-1) return;
+  [allTraders[idx+1],allTraders[idx]] = [allTraders[idx],allTraders[idx+1]];
+  saveTraders();
+  sortMode='custom';
+  document.querySelectorAll('.sort-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  renderList();
+}
+
+// ========== 组合详情页 ==========
+function openDetail(name){
+  currentTrader = allTraders.find(t=>t.name===name) || allTraders[0];
+  if(!currentTrader.holdings) currentTrader.holdings = JSON.parse(JSON.stringify(DEFAULT_HOLDINGS));
+  if(!currentTrader.deals) currentTrader.deals = JSON.parse(JSON.stringify(DEFAULT_DEALS));
+  renderDetail();
+  showPage('detail');
+}
+
+function renderDetail(){
+  const t = currentTrader;
+  if(!t) return;
+  
+  // 基本信息
+  let html = `
+    <div class="detail-hero">
+      <div class="dh-top">
+        <div class="dh-avatar">${robotAvatar(t.color,56)}</div>
+        <div class="dh-main">
+          <div class="dh-name">${t.name}</div>
+          <div class="dh-tags">${(t.tags||[]).map(tag=>`<span class="badge badge-gold">${tag}</span>`).join('')}</div>
+          <div class="dh-desc" onclick="editDesc()">${t.desc||'点击编辑策略简介'}</div>
+        </div>
+      </div>
+      <div class="dh-stats">
+        <div class="dh-stat">
+          <div class="dh-stat-label">最新净值</div>
+          <div class="dh-stat-val big">${t.nav}</div>
+        </div>
+        <div class="dh-stat">
+          <div class="dh-stat-label">累计盈亏</div>
+          <div class="dh-stat-val ${t.ret.startsWith('+')?'up':'down'}">${t.ret}</div>
+        </div>
+        <div class="dh-stat">
+          <div class="dh-stat-label">今日盈亏</div>
+          <div class="dh-stat-val ${t.today.startsWith('+')?'up':'down'}">${t.today}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 更多指标
+  html += `
+    <div class="detail-section">
+      <div class="ds-header"><span class="ds-title">核心指标</span></div>
+      <div class="ds-body" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        <div class="dh-stat"><div class="dh-stat-label">胜率</div><div class="dh-stat-val">${t.win}</div></div>
+        <div class="dh-stat"><div class="dh-stat-label">盈亏比</div><div class="dh-stat-val">${t.ratio}</div></div>
+        <div class="dh-stat"><div class="dh-stat-label">最大回撤</div><div class="dh-stat-val down">${t.draw}</div></div>
+        <div class="dh-stat"><div class="dh-stat-label">持仓数</div><div class="dh-stat-val">${t.hold}</div></div>
+        <div class="dh-stat"><div class="dh-stat-label">成交数</div><div class="dh-stat-val">${t.deal}</div></div>
+        <div class="dh-stat"><div class="dh-stat-label">交易天数</div><div class="dh-stat-val">${t.days}</div></div>
+      </div>
+    </div>
+  `;
+
+  // 持仓
+  html += renderHoldings();
+
+  // 收益日历
+  html += renderCalendar();
+
+  // 走势图
+  html += renderChart();
+
+  // 成交记录
+  html += renderDeals();
+
+  document.getElementById('detailContent').innerHTML = html;
+}
+
+// ========== 收益日历 ==========
+function renderCalendar(){
+  const monthKey = calendarYear + '-' + calendarMonth;
+  const curMonthData = dailyPnlData[monthKey];
+  const calendarCells = [];
+  const firstWeekday = new Date(calendarYear, calendarMonth-1, 1).getDay();
+  for(let i=0;i<firstWeekday;i++) calendarCells.push({empty:true});
+  const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
+  for(let day=1;day<=daysInMonth;day++){
+    const date = new Date(calendarYear, calendarMonth-1, day);
+    const weekday = date.getDay();
+    const isWeekend = weekday===0 || weekday===6;
+    const isToday = calendarYear===2026 && calendarMonth===8 && day===18;
+    const isFuture = calendarYear>2026 || (calendarYear===2026 && calendarMonth>8) || (calendarYear===2026 && calendarMonth===8 && day>18);
+    const hasData = curMonthData && curMonthData[day] && !isWeekend && !isFuture;
+    if(!hasData){
+      calendarCells.push({day,empty:false,nodata:true,isToday});
+    }else{
+      const d = curMonthData[day];
+      calendarCells.push({day,empty:false,nodata:false,ret:d.ret,money:d.money,up:d.money>0,isToday});
+    }
+  }
+  const dayStats = {win:0,loss:0};
+  calendarCells.forEach(c=>{ if(!c.empty&&!c.nodata){ if(c.up)dayStats.win++; else dayStats.loss++; }});
+  const curMonthStat = monthlyPnlData[monthKey];
+  const curYearStat = yearlyPnlData[calendarYear];
+  const totalYearStats = Object.values(yearlyPnlData).reduce((a,y)=>(y.up?a.win++:a.loss++,a),{win:0,loss:0});
+  const calMinYear=2025,calMinMonth=7,calMaxYear=2026,calMaxMonth=8;
+  const showPrev = calendarView==='day' ? !(calendarYear===calMinYear&&calendarMonth<=calMinMonth) : calendarView==='month'?calendarYear>calMinYear:false;
+  const showNext = calendarView==='day' ? !(calendarYear===calMaxYear&&calendarMonth>=calMaxMonth) : calendarView==='month'?calendarYear<calMaxYear:false;
+
+  let body = '';
+  if(calendarView==='day'){
+    body = `<div class="cal-grid">
+      ${['日','一','二','三','四','五','六'].map(d=>`<div class="cal-weekday">${d}</div>`).join('')}
+      ${calendarCells.map(c=>{
+        if(c.empty) return '<div class="cal-cell empty"></div>';
+        if(c.nodata) return `<div class="cal-cell nodata ${c.isToday?'today':''}"><span class="day">${c.day}</span></div>`;
+        return `<div class="cal-cell ${c.up?'up':'down'} ${c.isToday?'today':''}"><span class="day">${c.day}</span><span class="ret">${(c.ret>0?'+':'')+c.ret}%</span></div>`;
+      }).join('')}
+    </div>`;
+  }else if(calendarView==='month'){
+    body = `<div class="cal-month-grid">
+      ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>{
+        const md = calendarYear===2026&&(m===6||m===7||m===8) ? monthlyPnlData['2026-'+m] : (calendarYear===2025&&m>=7 ? monthlyPnlData['2025-'+m] : null);
+        if(!md) return `<div class="cal-month-cell nodata"><span>${m}月</span></div>`;
+        return `<div class="cal-month-cell ${md.up?'up':'down'}"><span>${m}月</span><span class="ret">${md.ret>0?'+':''}${md.ret}%</span></div>`;
+      }).join('')}
+    </div>`;
+  }else{
+    body = `<div class="cal-year-cell"><div style="font-size:16px">2026年</div><div style="font-size:20px;font-weight:700;margin-top:6px">+37.84%</div></div>`;
+  }
+
+  const summaryRet = calendarView==='day' ? (curMonthStat?`<span class="${curMonthStat.up?'up':'down'}" style="font-weight:600">${curMonthStat.ret>0?'+':''}${curMonthStat.ret}%</span>`:'--') : calendarView==='month' ? (curYearStat?`<span class="${curYearStat.up?'up':'down'}" style="font-weight:600">${curYearStat.ret>0?'+':''}${curYearStat.ret}%</span>`:'--') : `<span class="up" style="font-weight:600">+37.84%</span>`;
+  const summaryWL = calendarView==='day'?`盈 ${curMonthStat?curMonthStat.win:0} / 亏 ${curMonthStat?curMonthStat.loss:0}`:calendarView==='month'?`盈 ${curYearStat?curYearStat.win:0} / 亏 ${curYearStat?curYearStat.loss:0}`:`盈 ${totalYearStats.win} / 亏 ${totalYearStats.loss}`;
+
+  return `<div class="detail-section">
+    <div class="ds-header"><span class="ds-title">收益日历</span></div>
+    <div class="ds-body">
+      <div class="cal-view-switch">
+        <div class="cal-view-btn ${calendarView==='day'?'active':''}" onclick="setCalView('day')">日</div>
+        <div class="cal-view-btn ${calendarView==='month'?'active':''}" onclick="setCalView('month')">月</div>
+        <div class="cal-view-btn ${calendarView==='year'?'active':''}" onclick="setCalView('year')">年</div>
+      </div>
+      <div class="cal-nav">
+        ${showPrev?`<div class="cal-nav-arrow" onclick="calPrev()">‹</div>`:'<div style="width:28px"></div>'}
+        <span>${calendarView==='day'?calendarYear+'年'+calendarMonth+'月':calendarView==='month'?calendarYear+'年':'年度总览'}</span>
+        ${showNext?`<div class="cal-nav-arrow" onclick="calNext()">›</div>`:'<div style="width:28px"></div>'}
+      </div>
+      ${body}
+      <div class="cal-summary"><span>累计 ${summaryRet}</span><span>${summaryWL}</span></div>
+    </div>
+  </div>`;
+}
+
+function setCalView(v){ calendarView=v; renderDetail(); }
+function calPrev(){
+  if(calendarView==='day'){ if(calendarMonth>1)calendarMonth--; else{calendarMonth=12;calendarYear--;} }
+  else if(calendarView==='month'){ calendarYear--; }
+  renderDetail();
+}
+function calNext(){
+  if(calendarView==='day'){ if(calendarMonth<12)calendarMonth++; else{calendarMonth=1;calendarYear++;} }
+  else if(calendarView==='month'){ calendarYear++; }
+  renderDetail();
+}
+
+// ========== 持仓 ==========
+function renderHoldings(){
+  const holdings = (currentTrader && currentTrader.holdings) || [];
+  const totalRatio = holdings.reduce((s,h)=>s+parseFloat(h.ratio),0);
+  const remaining = (100-totalRatio).toFixed(1)+'%';
+  
+  let body = '';
+  if(holdings.length===0){
+    body = '<div class="holding-empty">暂无持仓</div>';
+  }else{
+    body = holdings.map(h=>{
+      const sector = h.code.startsWith('68')?'科创板':h.code.startsWith('30')?'创业板':'主板';
+      const firstBuy = getFirstBuyDate(h.code);
+      return `<div class="holding-card">
+        <div class="hc-top">
+          <div><span class="hc-name">${h.stock}</span><span class="hc-code">${h.code}</span></div>
+          <div class="hc-ratio">${h.ratio}</div>
+        </div>
+        <div class="hc-meta">
+          <span>${sector} · 首买 ${firstBuy}</span>
+          <span>成本 ${h.cost}</span>
+        </div>
+        <div class="hc-pnl">
+          <span>今日 <span class="${h.todayPnl.startsWith('+')?'up':'down'}">${h.todayPnl}</span></span>
+          <span>累计 <span class="${h.cumPnl.startsWith('+')?'up':'down'}">${h.cumPnl}</span></span>
+        </div>
+        <div class="hc-logic">${h.logic||'-'}</div>
+      </div>`;
+    }).join('');
+    body += `<div class="holding-footer"><span>剩余仓位</span><span style="color:var(--gold);font-weight:600">${remaining}</span></div>`;
+  }
+  
+  return `<div class="detail-section">
+    <div class="ds-header">
+      <span class="ds-title">持仓 (${holdings.length})</span>
+      <span class="ds-action" onclick="openRebalanceModal()">调仓</span>
+    </div>
+    <div class="ds-body" style="padding-bottom:0">${body}</div>
+  </div>`;
+}
+
+function getFirstBuyDate(code){
+  const deals = (currentTrader && currentTrader.deals) || [];
+  const buys = deals.filter(d=>d.code===code&&d.dir==='买入');
+  if(buys.length===0) return '-';
+  return buys.reduce((min,d)=>d.date<min?d.date:min,buys[0].date);
+}
+
+// ========== 走势图 ==========
+function renderChart(){
+  const t = currentTrader;
+  const _baseRet = parsePct(t.ret);
+  const periodCfg = {
+    '3m':{endRet:_baseRet,hsEnd:7.8,xLabels:['06-01','06-15','07-01','07-15','08-01','08-17']},
+    '1y':{endRet:52,hsEnd:12.5,xLabels:['25-08','25-10','25-12','26-02','26-04','26-06','26-08']},
+    'ytd':{endRet:48,hsEnd:9.2,xLabels:['01-01','02-01','03-01','04-01','05-01','06-01','07-01','08-17']},
+    'all':{endRet:_baseRet,hsEnd:7.8,xLabels:['06-01','06-15','07-01','07-15','08-01','08-17']},
+  };
+  const cfg = periodCfg[yieldPeriod]||periodCfg['3m'];
+  const periodReturnStr = (cfg.endRet>=0?'+':'')+cfg.endRet.toFixed(2)+'%';
+  const trendW=800,trendH=240,trendPadTop=20,trendPadBottom=30;
+  const trendYMax=Math.max(50,Math.ceil((cfg.endRet+5)/10)*10);
+  const trendYMin=-15;
+  function trendY(v){ return trendPadTop+(trendYMax-v)/(trendYMax-trendYMin)*(trendH-trendPadTop-trendPadBottom); }
+  const yTicks=[trendYMin,0,Math.round(trendYMax*0.5/5)*5,trendYMax];
+  const yGrid=yTicks.map(v=>`<line x1="0" y1="${trendY(v).toFixed(1)}" x2="800" y2="${trendY(v).toFixed(1)}" stroke="${v===0?'#444':'#2a2a2a'}" stroke-width="${v===0?'0.8':'0.5'}" stroke-dasharray="3"/>`).join('');
+  const yLabel=yTicks.map(v=>`<text x="2" y="${(trendY(v)+4).toFixed(1)}" fill="${v===0?'#aaa':'#888'}" font-size="10">${v}%</text>`).join('');
+  const xLabel=cfg.xLabels.map((d,i)=>{
+    const x=i===0?0:i===cfg.xLabels.length-1?trendW:(i/(cfg.xLabels.length-1))*trendW;
+    const anchor=i===0?'start':i===cfg.xLabels.length-1?'end':'middle';
+    return `<text x="${x.toFixed(1)}" y="255" fill="#888" font-size="10" text-anchor="${anchor}">${d}</text>`;
+  }).join('');
+  const trendPoints=52;
+  let comboPath='',comboY=0,comboVals=[];
+  for(let j=0;j<trendPoints;j++){
+    const progress=j/(trendPoints-1);
+    comboY=cfg.endRet*progress+Math.sin(j*0.7)*3+Math.sin(j*1.3)*1.5+(j%7===0?(Math.random()-0.5)*4:0);
+    if(j===0)comboY=0;
+    if(j===trendPoints-1)comboY=cfg.endRet;
+    comboVals.push(comboY);
+    comboPath+=(j===0?'M':'L')+(j*trendW/(trendPoints-1)).toFixed(1)+','+trendY(comboY).toFixed(1)+' ';
+  }
+  let hsPath='',hsY=0;
+  for(let j=0;j<trendPoints;j++){
+    const progress=j/(trendPoints-1);
+    hsY=cfg.hsEnd*progress+Math.sin(j*0.5)*2+Math.sin(j*0.9)*1;
+    if(j===0)hsY=0;
+    if(j===trendPoints-1)hsY=cfg.hsEnd;
+    hsPath+=(j===0?'M':'L')+(j*trendW/(trendPoints-1)).toFixed(1)+','+trendY(hsY).toFixed(1)+' ';
+  }
+  const rebalanceIdx=[5,14,26,38,47];
+  const rebalanceDots=rebalanceIdx.filter(i=>i<comboVals.length).map(i=>({x:(i*trendW/(trendPoints-1)).toFixed(1),y:trendY(comboVals[i]).toFixed(1)}));
+  const zeroY=trendY(0);
+  const comboFillPath=comboPath+'L'+trendW+','+zeroY+' L0,'+zeroY+' Z';
+  const deals = (currentTrader && currentTrader.deals) || [];
+  const rebalanceTotal=deals.length;
+  const rebalanceWin=deals.filter(d=>d.dir==='卖出').length;
+  const rebalanceWinRate=rebalanceTotal>0?(rebalanceWin/rebalanceTotal*100).toFixed(2)+'%':'0.00%';
+
+  return `<div class="detail-section">
+    <div class="ds-header"><span class="ds-title">收益率走势</span></div>
+    <div class="ds-body">
+      <div class="chart-legend">
+        <span class="chart-legend-item"><span class="chart-legend-line" style="background:var(--gold)"></span>本组合</span>
+        <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--gold)"></span>调仓点</span>
+        <span class="chart-legend-item"><span class="chart-legend-line" style="background:#4A90D9"></span>沪深300</span>
+      </div>
+      <div class="chart-container">
+        <svg viewBox="0 0 800 260" preserveAspectRatio="xMidYMid meet">
+          <defs><linearGradient id="comboGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--gold)" stop-opacity="0.25"/><stop offset="100%" stop-color="var(--gold)" stop-opacity="0.02"/></linearGradient></defs>
+          ${yGrid}${yLabel}
+          <path d="${comboFillPath}" fill="url(#comboGrad)"/>
+          <path d="${hsPath}" fill="none" stroke="#4A90D9" stroke-width="1.5" opacity="0.8"/>
+          <path d="${comboPath}" fill="none" stroke="var(--gold)" stroke-width="2"/>
+          ${rebalanceDots.map(d=>`<circle cx="${d.x}" cy="${d.y}" r="4" fill="var(--gold)" stroke="#1a1a2e" stroke-width="1.5"/>`).join('')}
+          ${xLabel}
+        </svg>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:6px">
+        <span style="font-size:13px;color:var(--text2)">本组合 <span class="up" style="font-size:16px;font-weight:700">${periodReturnStr}</span></span>
+      </div>
+      <div class="period-switch">
+        ${['3m','1y','ytd','all'].map(p=>`<button class="period-btn ${yieldPeriod===p?'active':''}" data-period="${p}" onclick="switchPeriod('${p}')">${p==='3m'?'近3月':p==='1y'?'近1年':p==='ytd'?'今年以来':'全部'}</button>`).join('')}
+      </div>
+      <div class="rebalance-summary">
+        <div class="rs-item"><div class="rs-label">调仓总次数</div><div class="rs-val">${rebalanceTotal}</div></div>
+        <div class="rs-item"><div class="rs-label">卖出次数</div><div class="rs-val" style="color:#ef4444">${rebalanceWin}</div></div>
+        <div class="rs-item"><div class="rs-label">调仓胜率</div><div class="rs-val" style="color:var(--gold)">${rebalanceWinRate}</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function switchPeriod(p){ yieldPeriod=p; renderDetail(); }
+
+// ========== 成交记录 ==========
+function renderDeals(){
+  const deals = (currentTrader && currentTrader.deals) || [];
+  if(deals.length===0) return '<div class="detail-section"><div class="ds-header"><span class="ds-title">成交记录</span></div><div class="ds-body"><div class="holding-empty">暂无成交记录</div></div></div>';
+  
+  const byDate={};
+  deals.forEach(d=>{ if(!byDate[d.date])byDate[d.date]=[]; byDate[d.date].push(d); });
+  const sortedDates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+  
+  let body = sortedDates.map(date=>{
+    const dayDeals=byDate[date];
+    let html=`<div class="deal-date-group">${date}</div>`;
+    html+=dayDeals.map(d=>`
+      <div class="deal-item">
+        <div class="deal-time">${d.time}</div>
+        <div class="deal-dir"><span class="badge ${d.dir==='买入'?'badge-red':'badge-green'}">${d.dir}</span></div>
+        <div class="deal-stock">
+          <div class="deal-stock-name">${d.stock}</div>
+          <div class="deal-stock-code">${d.code}</div>
+        </div>
+        <div class="deal-info">
+          <div class="deal-price">${d.price}</div>
+          <div class="deal-ratio">${d.posRatio}</div>
+          <div class="deal-reason">${d.reason}</div>
+        </div>
+      </div>
+    `).join('');
+    return html;
+  }).join('');
+
+  return `<div class="detail-section">
+    <div class="ds-header"><span class="ds-title">成交记录 (${deals.length})</span></div>
+    <div style="padding:0">${body}</div>
+  </div>`;
+}
+
+// ========== 组合选择侧边栏 ==========
+function toggleComboSelector(){
+  const sel=document.getElementById('comboSelector');
+  const mask=document.getElementById('comboSelectorMask');
+  const show=!sel.classList.contains('show');
+  sel.classList.toggle('show',show);
+  mask.classList.toggle('show',show);
+  if(show) renderComboSelector();
+}
+
+function renderComboSelector(){
+  const kw=document.getElementById('comboSearchInput').value.trim();
+  const filtered=kw?allTraders.filter(t=>t.name.includes(kw)):allTraders;
+  document.getElementById('comboSelectorList').innerHTML = filtered.length===0 
+    ? '<div class="empty-state"><div class="empty-state-text">无匹配组合</div></div>'
+    : filtered.map(t=>`
+      <div class="cs-item ${currentTrader&&currentTrader.name===t.name?'active':''}" onclick="selectCombo('${t.name}')">
+        <div style="flex-shrink:0">${robotAvatar(t.color,32)}</div>
+        <div class="cs-item-info">
+          <div class="cs-item-name">${t.name}</div>
+          <div class="cs-item-strategy">${t.strategy}</div>
+        </div>
+        <div class="cs-item-ret ${t.ret.startsWith('+')?'up':'down'}">${t.ret}</div>
+      </div>
+    `).join('');
+}
+
+function selectCombo(name){
+  currentTrader=allTraders.find(t=>t.name===name);
+  if(!currentTrader.holdings) currentTrader.holdings = JSON.parse(JSON.stringify(DEFAULT_HOLDINGS));
+  if(!currentTrader.deals) currentTrader.deals = JSON.parse(JSON.stringify(DEFAULT_DEALS));
+  renderDetail();
+  document.getElementById('topTitle').textContent=name;
+  toggleComboSelector();
+}
+
+// ========== 创建/编辑组合 ==========
+function openCreateModal(){
+  editingIndex=-1;
+  document.getElementById('modalTitle').textContent='创建组合';
+  document.getElementById('portfolioName').value='';
+  document.getElementById('styleInput').value='';
+  buttonSelectedStyles=[];
+  renderStyleButtons();
+  updateStylePreview();
+  showModal('portfolioModal');
+}
+
+function openEdit(index){
+  editingIndex=index;
+  const t=allTraders[index];
+  if(!t) return;
+  document.getElementById('modalTitle').textContent='修改组合';
+  document.getElementById('portfolioName').value=t.name;
+  document.getElementById('styleInput').value='';
+  buttonSelectedStyles=[...(t.tags||[])];
+  renderStyleButtons();
+  updateStylePreview();
+  showModal('portfolioModal');
+}
+
+function closePortfolioModal(e){
+  if(e&&e.target.closest('.modal-sheet')) return;
+  hideModal('portfolioModal');
+}
+
+function confirmPortfolio(){
+  const name=document.getElementById('portfolioName').value.trim();
+  const styles=getSelectedStyles();
+  if(!name){ alert('请输入组合名称'); return; }
+  if(styles.length===0){ alert('请输入或选择风格'); return; }
+  
+  if(editingIndex>=0){
+    if(allTraders.some((t,i)=>i!==editingIndex&&t.name===name)){ alert('该组合名称已存在'); return; }
+    const t=allTraders[editingIndex];
+    const oldName=t.name;
+    t.name=name; t.tags=styles; t.strategy=styles.join('、');
+    styles.forEach(s=>{ if(!styleOptions.includes(s))styleOptions.push(s); });
+    if(currentTrader&&currentTrader.name===oldName) currentTrader=t;
+  }else{
+    if(allTraders.some(t=>t.name===name)){ alert('该组合名称已存在'); return; }
+    styles.forEach(s=>{ if(!styleOptions.includes(s))styleOptions.push(s); });
+    const today=new Date();
+    const dateStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+    const colors=['#13c2c2','#722ed1','#faad14','#eb2f96','#fa8c16','#f5222d','#2f54eb','#52c41a'];
+    allTraders.push({
+      rank:allTraders.length+1,name,strategy:styles.join('、'),nav:'1.0000',ret:'+0.00%',today:'+0.00%',month:'+0.00%',
+      win:'50%',ratio:'1.00',draw:'-0.00%',hold:0,deal:0,days:0,realized:'+0.00%',
+      color:colors[allTraders.length%colors.length],created:dateStr,tags:styles,desc:'用户创建的组合。',
+      holdings:[],deals:[]
+    });
+  }
+  saveTraders();
+  hideModal('portfolioModal');
+  renderList();
+  if(currentPage==='detail'&&currentTrader) renderDetail();
+}
+
+// 风格选择
+function parseStyles(str){ return str.split(/[,，]/).map(s=>s.trim()).filter(s=>s.length>0); }
+function onStyleInputChange(){ renderStyleButtons(); updateStylePreview(); }
+function renderStyleButtons(){
+  const kw=document.getElementById('styleInput').value.trim().toLowerCase();
+  const list=styleOptions.filter(s=>!kw||s.toLowerCase().includes(kw));
+  const el=document.getElementById('styleButtons');
+  if(list.length===0){
+    el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px">暂无匹配风格，输入框中输入的风格将自动创建</div>';
+    return;
+  }
+  el.innerHTML=list.map(s=>{
+    const selected=buttonSelectedStyles.includes(s);
+    return `<div class="style-btn ${selected?'selected':''}" onclick="toggleStyle('${s.replace(/'/g,"\\'")}')">${s}</div>`;
+  }).join('');
+}
+function toggleStyle(s){
+  const idx=buttonSelectedStyles.indexOf(s);
+  if(idx>=0) buttonSelectedStyles.splice(idx,1);
+  else buttonSelectedStyles.push(s);
+  renderStyleButtons();
+  updateStylePreview();
+}
+function getSelectedStyles(){
+  const inputVal=document.getElementById('styleInput').value.trim();
+  const inputStyles=parseStyles(inputVal);
+  return [...new Set([...inputStyles,...buttonSelectedStyles])];
+}
+function updateStylePreview(){
+  const styles=getSelectedStyles();
+  const el=document.getElementById('stylePreview');
+  el.innerHTML=styles.length===0?'<span class="style-preview-empty">未选择风格</span>':styles.map(s=>`<span class="badge badge-gold">${s}</span>`).join('');
+}
+function deleteSelectedStyles(){
+  const styles=getSelectedStyles();
+  if(styles.length===0){ alert('请先选择要删除的风格'); return; }
+  if(!confirm('确定从风格库中删除选中的 '+styles.length+' 个风格吗？同时会从所有组合的风格标签中移除。')) return;
+  styles.forEach(s=>{ const idx=styleOptions.indexOf(s); if(idx>=0)styleOptions.splice(idx,1); });
+  allTraders.forEach(t=>{ if(t.tags)t.tags=t.tags.filter(tag=>!styles.includes(tag)); });
+  document.getElementById('styleInput').value='';
+  buttonSelectedStyles=[];
+  renderStyleButtons();
+  updateStylePreview();
+  saveTraders();
+  renderList();
+}
+
+// ========== 删除 ==========
+function openDelete(name){
+  pendingDeleteName=name;
+  document.getElementById('deleteTargetName').textContent=name;
+  showModal('deleteModal');
+}
+function closeDeleteModal(e){
+  if(e&&e.target.closest('.modal-sheet')) return;
+  hideModal('deleteModal');
+}
+function confirmDelete(){
+  if(!pendingDeleteName) return;
+  const idx=allTraders.findIndex(t=>t.name===pendingDeleteName);
+  if(idx>=0) allTraders.splice(idx,1);
+  saveTraders();
+  hideModal('deleteModal');
+  renderList();
+  if(currentTrader&&currentTrader.name===pendingDeleteName){
+    currentTrader=allTraders[0]||null;
+    if(currentTrader){ g_deals=null;g_holdings=null;initTraderData();renderDetail(); }
+    else goBack();
+  }
+}
+
+// ========== 调仓 ==========
+function openRebalanceModal(){
+  try{
+    document.getElementById('rbCode').value='';
+    document.getElementById('rbStock').value='';
+    document.getElementById('rbPrice').value='';
+    document.getElementById('rbRatio').value='';
+    document.getElementById('rbLogic').value='';
+    const holdings = (currentTrader && currentTrader.holdings) || [];
+    const totalPos=holdings.reduce((s,h)=>s+parseFloat(h.ratio),0);
+    document.getElementById('rbRemaining').textContent=(100-totalPos).toFixed(1)+'%';
+  }catch(e){ console.error('openRebalanceModal error:', e); }
+  showModal('rebalanceModal');
+}
+function closeRebalanceModal(e){
+  if(e&&e.target.closest('.modal-sheet')) return;
+  hideModal('rebalanceModal');
+}
+function onRbCodeInput(){
+  const code=document.getElementById('rbCode').value.trim();
+  if(STOCK_MAP[code]) document.getElementById('rbStock').value=STOCK_MAP[code];
+}
+function onRbStockInput(){
+  const stock=document.getElementById('rbStock').value.trim();
+  for(const c in STOCK_MAP){ if(STOCK_MAP[c]===stock){document.getElementById('rbCode').value=c;break;} }
+}
+function confirmRebalance(){
+  const code=document.getElementById('rbCode').value.trim();
+  const stock=document.getElementById('rbStock').value.trim();
+  const price=parseFloat(document.getElementById('rbPrice').value);
+  const ratio=parseFloat(document.getElementById('rbRatio').value);
+  const logic=document.getElementById('rbLogic').value.trim()||'调仓';
+  if(!code||!stock||isNaN(price)||isNaN(ratio)){ alert('请填写代码、股票名称、成交价和仓位'); return; }
+  if(ratio<0||ratio>100){ alert('仓位应在0-100之间'); return; }
+  if(!currentTrader){ alert('请先选择组合'); return; }
+  
+  const now=new Date();
+  const date=now.toISOString().split('T')[0];
+  const time=now.toTimeString().slice(0,8);
+  
+  // 确保组合有持仓和成交数组
+  if(!currentTrader.holdings) currentTrader.holdings = [];
+  if(!currentTrader.deals) currentTrader.deals = [];
+  
+  const holdings = currentTrader.holdings;
+  const deals = currentTrader.deals;
+  
+  const existing=holdings.find(h=>h.code===code);
+  const oldRatio=existing?parseFloat(existing.ratio):0;
+  const newRatio=ratio;
+  if(newRatio===oldRatio){ alert('仓位未发生变化'); return; }
+  const dir=newRatio>oldRatio?'买入':'卖出';
+  if(dir==='买入'){
+    const currentTotal=holdings.reduce((s,h)=>s+parseFloat(h.ratio),0);
+    const newTotal=currentTotal-oldRatio+newRatio;
+    if(newTotal>100){ alert('个股仓位合计不能超过100%，当前剩余仓位为'+(100-currentTotal+oldRatio).toFixed(1)+'%'); return; }
+  }
+  const posRatio=oldRatio.toFixed(1)+'% --> '+newRatio.toFixed(1)+'%';
+  deals.unshift({date,time,dir,stock,code,price:price.toFixed(2),posRatio,reason:logic});
+  
+  if(existing){
+    if(newRatio<=0){
+      currentTrader.holdings = holdings.filter(h=>h.code!==code);
+    }else if(dir==='买入'){
+      const addedRatio=newRatio-oldRatio;
+      const newCost=(parseFloat(existing.cost)*oldRatio+price*addedRatio)/newRatio;
+      existing.cost=newCost.toFixed(2); existing.ratio=newRatio.toFixed(1)+'%';
+    }else{
+      existing.ratio=newRatio.toFixed(1)+'%';
+    }
+  }else if(newRatio>0){
+    holdings.push({code,stock,cost:price.toFixed(2),ratio:newRatio.toFixed(1)+'%',todayPnl:'+0.00%',cumPnl:'+0.00%',logic});
+  }
+  
+  // 更新组合统计
+  currentTrader.hold = currentTrader.holdings.length;
+  currentTrader.deal = currentTrader.deals.length;
+  
+  // 同步到 allTraders
+  const idx = allTraders.findIndex(t=>t.name===currentTrader.name);
+  if(idx>=0) allTraders[idx] = currentTrader;
+  
+  saveTraders();
+  hideModal('rebalanceModal');
+  renderDetail();
+}
+
+// ========== 编辑描述 ==========
+function editDesc(){
+  const t=currentTrader;
+  if(!t) return;
+  const newDesc=prompt('编辑策略简介：', t.desc||'');
+  if(newDesc!==null){
+    t.desc=newDesc.trim();
+    saveTraders();
+    renderDetail();
+  }
+}
+
+// ========== 弹窗工具 ==========
+function showModal(id){ document.getElementById(id).classList.add('show'); }
+function hideModal(id){ document.getElementById(id).classList.remove('show'); }
+
+// ========== 启动 ==========
+init();
+
+// ========== PWA Service Worker 注册 ==========
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(err=>console.log('SW注册失败:', err));
+  });
+}
+</script>
+</body>
+</html>
