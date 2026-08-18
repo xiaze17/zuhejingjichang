@@ -978,8 +978,11 @@ function renderChart(){
           <circle id="chartComboDot" cx="0" cy="0" r="5" fill="var(--gold)" stroke="#1a1a2e" stroke-width="2" style="display:none"/>
           <circle id="chartHsDot" cx="0" cy="0" r="5" fill="#4A90D9" stroke="#1a1a2e" stroke-width="2" style="display:none"/>
           ${xLabel}
-          <!-- 透明点击区域 -->
-          <rect x="0" y="20" width="800" height="210" fill="transparent" onclick="handleChartClick(evt)" style="cursor:crosshair"/>
+          <!-- 透明点击/滑动区域 -->
+          <rect x="0" y="20" width="800" height="210" fill="transparent" style="cursor:crosshair"
+            onclick="handleChartClick(evt)"
+            ontouchstart="chartTouchStart(evt)" ontouchmove="chartTouchMove(evt)"
+            onmousedown="chartMouseDown(evt)" onmousemove="chartMouseMove(evt)" onmouseup="chartMouseUp(evt)" onmouseleave="chartMouseUp(evt)"/>
         </svg>
       </div>
       <!-- 选中日期收益率显示 -->
@@ -998,7 +1001,7 @@ function renderChart(){
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:6px">
         <span style="font-size:13px;color:var(--text2)">本组合累计 <span class="up" style="font-size:16px;font-weight:700">${periodReturnStr}</span></span>
-        <span style="font-size:11px;color:var(--text3)">点击曲线查看某日累计</span>
+        <span style="font-size:11px;color:var(--text3)">点击或左右滑动查看某日累计</span>
       </div>
       <div class="rebalance-summary">
         <div class="rs-item"><div class="rs-label">调仓总次数</div><div class="rs-val">${rebalanceTotal}</div></div>
@@ -1009,23 +1012,20 @@ function renderChart(){
   </div>`;
 }
 
-// 点击走势图查询某日累计收益率
-function handleChartClick(evt){
+// 走势图滑动状态
+let chartDragging=false;
+
+// 根据SVG坐标x更新选中日期的收益率显示
+function updateChartSelection(x){
   if(!chartData.comboVals.length) return;
-  const svg=evt.target.ownerSVGElement;
-  const pt=svg.createSVGPoint();
-  pt.x=evt.clientX;pt.y=evt.clientY;
-  const svgP=pt.matrixTransform(svg.getScreenCTM().inverse());
-  const x=Math.max(0,Math.min(chartData.trendW,svgP.x));
+  x=Math.max(0,Math.min(chartData.trendW,x));
   const idx=Math.round(x/chartData.trendW*(chartData.comboVals.length-1));
   const comboRet=chartData.comboVals[idx];
   const hsRet=chartData.hsVals[idx];
-  // 计算对应日期
   const created=chartData.created;
   const now=new Date();
   const date=new Date(created.getTime()+(now-created)*idx/(chartData.comboVals.length-1));
   const dateStr=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
-  // 显示参考线和数据点
   const dotX=(idx*chartData.trendW/(chartData.comboVals.length-1)).toFixed(1);
   const trendY=v=>chartData.trendPadTop+(chartData.trendYMax-v)/(chartData.trendYMax-chartData.trendYMin)*(chartData.trendH-chartData.trendPadTop-chartData.trendPadBottom);
   document.getElementById('chartVLine').setAttribute('x1',dotX);
@@ -1037,7 +1037,6 @@ function handleChartClick(evt){
   document.getElementById('chartHsDot').setAttribute('cx',dotX);
   document.getElementById('chartHsDot').setAttribute('cy',trendY(hsRet).toFixed(1));
   document.getElementById('chartHsDot').style.display='block';
-  // 显示收益率信息
   document.getElementById('chartSelectedInfo').style.display='block';
   document.getElementById('chartSelectedDate').textContent=dateStr+' 累计收益率';
   document.getElementById('chartSelectedCombo').textContent=(comboRet>=0?'+':'')+comboRet.toFixed(2)+'%';
@@ -1045,6 +1044,31 @@ function handleChartClick(evt){
   document.getElementById('chartSelectedHs').textContent=(hsRet>=0?'+':'')+hsRet.toFixed(2)+'%';
   document.getElementById('chartSelectedHs').style.color=hsRet>=0?'var(--red)':'var(--green)';
 }
+
+// 将客户端坐标转为SVG坐标
+function clientToSvgX(clientX){
+  const svg=document.querySelector('#comboPath').ownerSVGElement;
+  const pt=svg.createSVGPoint();
+  pt.x=clientX;pt.y=0;
+  return pt.matrixTransform(svg.getScreenCTM().inverse()).x;
+}
+
+// 点击
+function handleChartClick(evt){ updateChartSelection(clientToSvgX(evt.clientX)); }
+
+// 触摸滑动
+function chartTouchStart(evt){ evt.preventDefault(); chartDragging=true; chartTouchMove(evt); }
+function chartTouchMove(evt){
+  if(!chartDragging) return;
+  evt.preventDefault();
+  const touch=evt.touches[0];
+  updateChartSelection(clientToSvgX(touch.clientX));
+}
+
+// 鼠标滑动
+function chartMouseDown(evt){ chartDragging=true; updateChartSelection(clientToSvgX(evt.clientX)); }
+function chartMouseMove(evt){ if(chartDragging) updateChartSelection(clientToSvgX(evt.clientX)); }
+function chartMouseUp(evt){ chartDragging=false; }
 
 // ========== 成交记录 ==========
 function renderDeals(){
