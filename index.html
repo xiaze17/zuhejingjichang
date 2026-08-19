@@ -1267,9 +1267,6 @@ function renderChart(){
   
   const zeroY=trendY(0);
   const comboFillPath=comboPath+'L'+trendW+','+zeroY+' L0,'+zeroY+' Z';
-  const rebalanceTotal=deals.length;
-  const rebalanceWin=deals.filter(d=>d.dir==='卖出').length;
-  const rebalanceWinRate=rebalanceTotal>0?(rebalanceWin/rebalanceTotal*100).toFixed(2)+'%':'0.00%';
   
   // 时间段切换按钮
   const periodTabs=`
@@ -1323,11 +1320,6 @@ function renderChart(){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:6px">
         <span style="font-size:13px;color:var(--text2)">本组合累计 <span class="up" style="font-size:16px;font-weight:700">${periodReturnStr}</span></span>
         <span style="font-size:11px;color:var(--text3)">点击或左右滑动查看某日累计</span>
-      </div>
-      <div class="rebalance-summary">
-        <div class="rs-item"><div class="rs-label">调仓总次数</div><div class="rs-val">${rebalanceTotal}</div></div>
-        <div class="rs-item"><div class="rs-label">卖出次数</div><div class="rs-val" style="color:#ef4444">${rebalanceWin}</div></div>
-        <div class="rs-item"><div class="rs-label">调仓胜率</div><div class="rs-val" style="color:var(--gold)">${rebalanceWinRate}</div></div>
       </div>
     </div>
   </div>`;
@@ -1400,6 +1392,31 @@ function renderDeals(){
   const deals = (currentTrader && currentTrader.deals) || [];
   if(deals.length===0) return '<div class="detail-section"><div class="ds-header"><span class="ds-title">成交记录</span></div><div class="ds-body"><div class="holding-empty">暂无成交记录</div></div></div>';
   
+  // 按雪球逻辑计算调仓统计
+  const rebalanceTotal = deals.length; // 调仓总次数
+  const sellDeals = deals.filter(d=>d.dir==='卖出');
+  let winSells = 0; // 调仓赚钱次数（盈利卖出）
+  sellDeals.forEach(d=>{
+    const sellPrice = parseFloat(d.price);
+    // 计算该股票在卖出日期前的加权平均买入价
+    const stockBuys = deals.filter(dd=>dd.code===d.code && dd.dir==='买入' && dd.date<=d.date);
+    if(stockBuys.length>0){
+      const totalBuyAmount = stockBuys.reduce((s,dd)=>s+parseFloat(dd.price)*(dd.shares||0),0);
+      const totalBuyShares = stockBuys.reduce((s,dd)=>s+(dd.shares||0),0);
+      const avgBuy = totalBuyShares>0 ? totalBuyAmount/totalBuyShares : 0;
+      if(sellPrice>avgBuy) winSells++;
+    }
+  });
+  const rebalanceWinRate = rebalanceTotal>0 ? (winSells/rebalanceTotal*100).toFixed(0)+'%' : '0%';
+  
+  // 调仓统计HTML
+  const statsHtml = `
+    <div class="rebalance-summary" style="margin:0 12px 12px">
+      <div class="rs-item"><div class="rs-label">调仓总次数</div><div class="rs-val">${rebalanceTotal}</div></div>
+      <div class="rs-item"><div class="rs-label">调仓赚钱次数</div><div class="rs-val" style="color:var(--gold)">${winSells}</div></div>
+      <div class="rs-item"><div class="rs-label">调仓胜率</div><div class="rs-val" style="color:var(--gold)">${rebalanceWinRate}</div></div>
+    </div>`;
+  
   const byDate={};
   deals.forEach(d=>{ if(!byDate[d.date])byDate[d.date]=[]; byDate[d.date].push(d); });
   const sortedDates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
@@ -1427,7 +1444,7 @@ function renderDeals(){
 
   return `<div class="detail-section">
     <div class="ds-header"><span class="ds-title">成交记录 (${deals.length})</span></div>
-    <div style="padding:0">${body}</div>
+    <div style="padding:0">${statsHtml}${body}</div>
   </div>`;
 }
 
