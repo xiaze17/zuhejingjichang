@@ -813,7 +813,7 @@ function updateHoldingPrices(){
       updateHS300Path(hsChange);
     }
     // 确保cash初始化
-    if(currentTrader.cash===undefined) currentTrader.cash=100;
+    if(currentTrader.cash===undefined) currentTrader.cash=10000;
     // 第一步：计算总市值 = 现金 + 各持仓市值
     let totalMV=currentTrader.cash;
     const priceMap={};
@@ -875,8 +875,8 @@ function updateHoldingPrices(){
     const comboEl=document.getElementById('comboTodayPnl');
     if(comboEl){comboEl.textContent=comboStr;comboEl.className='dh-stat-val '+(comboToday>=0?'up':'down');}
     currentTrader.today=comboStr;
-    // 组合累计盈亏和净值（初始资金100）
-    const initialCapital=100;
+    // 组合累计盈亏和净值（初始资金10000）
+    const initialCapital=10000;
     const nav=totalMV/initialCapital;
     const cumRet=(nav-1)*100;
     currentTrader.nav=nav.toFixed(4);
@@ -1215,7 +1215,7 @@ function confirmPortfolio(){
       rank:allTraders.length+1,name,strategy:styles.join('、'),nav:'1.0000',ret:'+0.00%',today:'+0.00%',month:'+0.00%',
       win:'50%',ratio:'1.00',draw:'-0.00%',hold:0,deal:0,days:0,realized:'+0.00%',
       color:colors[allTraders.length%colors.length],created:dateStr,tags:styles,desc:'用户创建的组合。',
-      holdings:[],deals:[],cash:100
+      holdings:[],deals:[],cash:10000
     });
   }
   saveTraders();
