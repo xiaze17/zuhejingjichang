@@ -424,6 +424,7 @@ let calendarYear = 2026;
 let yieldPeriod = '3m';
 let chartData={comboVals:[],hsVals:[],xLabels:[],created:null}; // 走势图数据，供点击查询
 let chartPeriod='3m'; // 走势图时间段：3m=近3个月，1y=最近1年，all=全部
+let hs300Change=0; // 沪深300实时涨跌幅（从组合创建日累计）
 
 // 默认持仓和成交数据
 const DEFAULT_HOLDINGS = [
@@ -960,11 +961,15 @@ function updateHoldingPrices(){
   // 同时获取沪深300指数行情
   codes.push('sh000300');
   getStockQuotes(codes,function(results){
-    // 更新沪深300实时曲线
+    // 更新沪深300实时曲线和累计收益率
     const hs300=results['sh000300'];
     if(hs300&&hs300.price&&hs300.prevClose){
       const hsChange=((parseFloat(hs300.price)-parseFloat(hs300.prevClose))/parseFloat(hs300.prevClose)*100);
+      hs300Change=hsChange; // 保存到全局变量
       updateHS300Path(hsChange);
+      // 更新图例中的沪深300收益率显示
+      const hsLegendEl=document.querySelector('.chart-legend-item .hs300-legend-val');
+      if(hsLegendEl) hsLegendEl.textContent=(hsChange>=0?'+':'')+hsChange.toFixed(2)+'%';
     }
     // 确保cash初始化
     if(currentTrader.cash===undefined) currentTrader.cash=10000;
@@ -1202,12 +1207,13 @@ function generateChartData(period){
     comboVals.push((nav-1)*100);
   });
   
-  // 生成沪深300收益率数据（模拟，后续可对接实时）
+  // 生成沪深300收益率数据（从组合创建日累计，使用实时涨跌幅）
   const hsVals=[];
-  const hsEnd=7.8;
+  const hsEnd=hs300Change; // 沪深300累计收益率（实时获取）
   tradingDays.forEach((date,idx)=>{
     const progress=idx/(tradingDays.length-1||1);
-    let hsY=hsEnd*progress+Math.sin(idx*0.5)*2+Math.sin(idx*0.9)*1;
+    // 从0线性增长到hsEnd（暂无历史沪深300数据，用线性插值）
+    let hsY=hsEnd*progress;
     if(idx===0) hsY=0;
     if(idx===tradingDays.length-1) hsY=hsEnd;
     hsVals.push(hsY);
@@ -1301,7 +1307,7 @@ function renderChart(){
       ${periodTabs}
       <div class="chart-legend">
         <span class="chart-legend-item"><span class="chart-legend-line" style="background:var(--gold)"></span>本组合 ${periodReturnStr}</span>
-        <span class="chart-legend-item"><span class="chart-legend-line" style="background:#4A90D9"></span>沪深300 +${hsVals[hsVals.length-1].toFixed(2)}%</span>
+        <span class="chart-legend-item"><span class="chart-legend-line" style="background:#4A90D9"></span>沪深300 <span class="hs300-legend-val">${(hsVals[hsVals.length-1]>=0?'+':'')+hsVals[hsVals.length-1].toFixed(2)}%</span></span>
       </div>
       <div class="chart-container">
         <svg viewBox="0 0 800 260" preserveAspectRatio="xMidYMid meet">
@@ -1335,10 +1341,6 @@ function renderChart(){
             <div id="chartSelectedHs" style="font-size:16px;font-weight:700;color:#4A90D9">--</div>
           </div>
         </div>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:6px">
-        <span style="font-size:13px;color:var(--text2)">本组合累计 <span class="up" style="font-size:16px;font-weight:700">${periodReturnStr}</span></span>
-        <span style="font-size:11px;color:var(--text3)">点击或左右滑动查看某日累计</span>
       </div>
     </div>
   </div>`;
