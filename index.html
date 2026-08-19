@@ -759,12 +759,18 @@ function renderCalendar(){
   // 基于navHistory计算每日收益率
   const sortedNavDates=Object.keys(navHistory).sort();
   const dailyReturns={}; // {date: ret}
+  const todayStr=new Date().toISOString().split('T')[0];
+  const todayPnl=parsePct(t&&t.today?t.today:'0%'); // 今日盈亏（已计算好）
   for(let i=0;i<sortedNavDates.length;i++){
     const date=sortedNavDates[i];
     const nav=navHistory[date];
     if(i===0){
-      // 第一天，用初始净值1作为基准，收益率=(当日净值-1)/1×100%
-      dailyReturns[date]=((nav-1)/1)*100;
+      // 第一天：如果是今日，使用今日盈亏数据；否则用初始净值1作为基准
+      if(date===todayStr){
+        dailyReturns[date]=todayPnl;
+      }else{
+        dailyReturns[date]=((nav-1)/1)*100;
+      }
     }else{
       const prevDate=sortedNavDates[i-1];
       const prevNav=navHistory[prevDate];
@@ -772,6 +778,10 @@ function renderCalendar(){
         dailyReturns[date]=((nav-prevNav)/prevNav)*100;
       }
     }
+  }
+  // 如果今日有交易但navHistory中没有今日数据（时序问题），补充今日收益率
+  if(deals.length>0 && !dailyReturns[todayStr]){
+    dailyReturns[todayStr]=todayPnl;
   }
   
   // 基于每日收益率聚合月度数据
