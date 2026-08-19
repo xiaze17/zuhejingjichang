@@ -616,7 +616,7 @@ function renderDetail(){
     <div class="detail-section">
       <div class="ds-header"><span class="ds-title">核心指标</span></div>
       <div class="ds-body" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-        <div class="dh-stat"><div class="dh-stat-label">胜率</div><div class="dh-stat-val">${t.win}</div></div>
+        <div class="dh-stat"><div class="dh-stat-label">胜率</div><div class="dh-stat-val" data-field="win">${t.win}</div></div>
         <div class="dh-stat"><div class="dh-stat-label">盈亏比</div><div class="dh-stat-val">${t.ratio}</div></div>
         <div class="dh-stat"><div class="dh-stat-label">最大回撤</div><div class="dh-stat-val down">${t.draw}</div></div>
         <div class="dh-stat"><div class="dh-stat-label">持仓数</div><div class="dh-stat-val">${t.hold}</div></div>
@@ -826,15 +826,16 @@ function updateHoldingPrices(){
       totalMV+=(h.shares||0)*price;
     });
     // 第二步：更新每个持仓的仓位比例、现价、收益率
-    let weightedTodayPnl=0;
+    let totalTodayPnlAmount=0; // 今日盈亏总金额
     holdings.forEach(h=>{
       const code=h.code;
       const price=priceMap[code];
       const quote=results[code];
       const prevClose=quote&&quote.prevClose?parseFloat(quote.prevClose):0;
       const cost=parseFloat(h.cost);
+      const shares=h.shares||0;
       // 动态仓位比例
-      const marketValue=(h.shares||0)*price;
+      const marketValue=shares*price;
       const dynamicRatio=totalMV>0?marketValue/totalMV*100:0;
       h.ratio=dynamicRatio.toFixed(1)+'%';
       const ratioEl=document.querySelector('.hc-ratio[data-code="'+code+'"]');
@@ -845,18 +846,21 @@ function updateHoldingPrices(){
       // 判断是否今日新建仓（该股票最早买入日期是今天）
       const stockBuys=deals.filter(d=>d.code===code&&d.dir==='买入');
       const isNewToday=stockBuys.length>0&&stockBuys.every(d=>d.date===todayStr);
-      // 今日收益率：今日新建仓用成本价，否则用昨收价
+      // 今日盈亏金额：今日新建仓用(当前价-成本价)*股数，否则用(当前价-昨收价)*股数
+      let todayPnlAmount=0;
       let todayPnl=0;
       if(isNewToday&&cost>0){
+        todayPnlAmount=shares*(price-cost);
         todayPnl=((price-cost)/cost*100);
       }else if(prevClose>0){
+        todayPnlAmount=shares*(price-prevClose);
         todayPnl=((price-prevClose)/prevClose*100);
       }
+      totalTodayPnlAmount+=todayPnlAmount;
       const todayStr2=(todayPnl>=0?'+':'')+todayPnl.toFixed(2)+'%';
       const todayEl=document.querySelector('.today-pnl[data-code="'+code+'"]');
       if(todayEl){todayEl.textContent=todayStr2;todayEl.className='today-pnl '+(todayPnl>=0?'up':'down');}
       h.todayPnl=todayStr2;
-      weightedTodayPnl+=todayPnl*dynamicRatio;
       // 累计收益率
       if(cost>0){
         const cumPnl=((price-cost)/cost*100);
@@ -870,14 +874,14 @@ function updateHoldingPrices(){
     const remainingRatio=totalMV>0?currentTrader.cash/totalMV*100:100;
     const remainingEl=document.querySelector('.holding-footer span:last-child');
     if(remainingEl) remainingEl.textContent=remainingRatio.toFixed(1)+'%';
-    // 组合今日盈亏
-    const comboToday=weightedTodayPnl/100;
+    // 组合今日盈亏 = 今日盈亏总金额 / 初始资金 * 100
+    const initialCapital=10000;
+    const comboToday=totalTodayPnlAmount/initialCapital*100;
     const comboStr=(comboToday>=0?'+':'')+comboToday.toFixed(2)+'%';
     const comboEl=document.getElementById('comboTodayPnl');
     if(comboEl){comboEl.textContent=comboStr;comboEl.className='dh-stat-val '+(comboToday>=0?'up':'down');}
     currentTrader.today=comboStr;
-    // 组合累计盈亏和净值（初始资金10000）
-    const initialCapital=10000;
+    // 组合累计盈亏和净值
     const nav=totalMV/initialCapital;
     const cumRet=(nav-1)*100;
     currentTrader.nav=nav.toFixed(4);
@@ -887,6 +891,21 @@ function updateHoldingPrices(){
     if(navEl) navEl.textContent=currentTrader.nav;
     const retEl=document.getElementById('comboRet');
     if(retEl){retEl.textContent=currentTrader.ret;retEl.className='dh-stat-val '+(cumRet>=0?'up':'down');}
+    // 更新胜率：基于卖出交易计算（盈利卖出/总卖出）
+    const sellDeals=deals.filter(d=>d.dir==='卖出');
+    let winSells=0;
+    sellDeals.forEach(d=>{
+      const sellPrice=parseFloat(d.price);
+      const stockBuys=deals.filter(dd=>dd.code===d.code&&dd.dir==='买入'&&dd.date<=d.date);
+      if(stockBuys.length>0){
+        const avgBuy=stockBuys.reduce((s,dd)=>s+parseFloat(dd.price),0)/stockBuys.length;
+        if(sellPrice>avgBuy) winSells++;
+      }
+    });
+    const winRate=sellDeals.length>0?(winSells/sellDeals.length*100).toFixed(0)+'%':'0%';
+    currentTrader.win=winRate;
+    const winEl=document.querySelector('.dh-stat-val[data-field="win"]');
+    if(winEl) winEl.textContent=winRate;
     saveTraders();
   });
 }
