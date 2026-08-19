@@ -439,44 +439,6 @@ const DEFAULT_DEALS = [
   {date:'2026-06-16',time:'09:30:00',dir:'买入',stock:'东山精密',code:'002384',price:'244.00',posRatio:'0.0% --> 48.0%',reason:'金叉放量买入'},
 ];
 
-// 收益数据
-const dailyPnlData = {
-  '2025-7': {29:{ret:0.52,money:2580.7},30:{ret:-0.56,money:-2800.0},31:{ret:-0.03,money:-160.0}},
-  '2025-8': {1:{ret:-0.37,money:-1840.0},4:{ret:-0.47,money:-2314.69},13:{ret:2.53,money:12541.3},14:{ret:-3.17,money:-16100.0},15:{ret:-1.98,money:-9730.0},18:{ret:1.84,money:8855.0},19:{ret:-1.46,money:-7175.0},20:{ret:-1.33,money:-6442.24}},
-  '2025-9': {3:{ret:1.52,money:7257.0},4:{ret:0.32,money:1565.74}},
-  '2025-10': {27:{ret:0.28,money:1370.29},28:{ret:-0.32,money:-1564.0},29:{ret:0.25,money:1224.0},30:{ret:-0.57,money:-2788.0},31:{ret:-1.43,money:-6936.0}},
-  '2025-11': {3:{ret:-0.14,money:-690.55}},
-  '2025-12': {10:{ret:0.15,money:726.64},11:{ret:-0.87,money:-4163.0},12:{ret:2.96,money:14030.0},15:{ret:-2.24,money:-10925.0},16:{ret:-0.93,money:-4439.0},17:{ret:1.57,money:7429.0},18:{ret:-2.43,money:-11638.0},19:{ret:0.29,money:1353.32},24:{ret:1.13,money:5291.02},25:{ret:0.95,money:4505.0},26:{ret:-1.53,money:-7351.0},29:{ret:0.84,money:3983.0},30:{ret:-0.65,money:-3083.0},31:{ret:-1.55,money:-7323.0}},
-  '2026-1': {5:{ret:2.09,money:9703.0},6:{ret:0.62,money:2950.0},7:{ret:-0.56,money:-2693.84},8:{ret:0.47,money:2233.0},9:{ret:0.35,money:1694.0},12:{ret:1.75,money:8393.0},13:{ret:-1.31,money:-6391.0},14:{ret:1.46,money:7007.0},15:{ret:-0.3,money:-1463.0},16:{ret:0.28,money:1386.0},19:{ret:1.18,money:5775.0},20:{ret:-1.67,money:-8239.0},21:{ret:-0.25,money:-1232.0},22:{ret:-0.32,money:-1540.0},23:{ret:0.06,money:299.44}},
-  '2026-2': {12:{ret:0.7,money:3362.75},13:{ret:-0.19,money:-912.0},24:{ret:-0.06,money:-304.0},25:{ret:-0.28,money:-1368.0},26:{ret:0.71,money:3420.0},27:{ret:0.34,money:1672.0}},
-  '2026-3': {2:{ret:-1.35,money:-6612.0},3:{ret:0.11,money:531.33},12:{ret:2.4,money:11569.37},13:{ret:-1.12,money:-5544.0},16:{ret:-0.65,money:-3157.0},17:{ret:-1.49,money:-7238.0},18:{ret:2.98,money:14245.0},19:{ret:0.73,money:3619.0},20:{ret:-0.92,money:-4543.0},23:{ret:-1.22,money:-6006.0},24:{ret:0.48,money:2310.0},25:{ret:1.01,money:4928.0},26:{ret:-1.47,money:-7238.0},27:{ret:-0.82,money:-4003.02},31:{ret:1.98,money:9537.43}},
-  '2026-4': {1:{ret:1.48,money:7254.0},2:{ret:-1.03,money:-5148.0},3:{ret:0.14,money:702.0},7:{ret:0.32,money:1560.0},8:{ret:4.13,money:20474.88},9:{ret:-0.34,money:-1777.0},10:{ret:1.24,money:6403.0},13:{ret:1.13,money:5887.0},14:{ret:1.81,money:9556.0},15:{ret:-1.36,money:-7292.0},16:{ret:2.02,money:10669.0},17:{ret:0.62,money:3354.0},20:{ret:1.42,money:7715.0},21:{ret:-1.22,money:-6710.0},22:{ret:7.28,money:39621.0},23:{ret:2.42,money:14129.0},24:{ret:-1.74,money:-10401.0},27:{ret:2.66,money:15609.0},28:{ret:-0.18,money:-1114.0},29:{ret:-0.15,money:-930.0},30:{ret:-2.76,money:-16579.0}},
-  '2026-5': {6:{ret:-0.06,money:-326.0},7:{ret:2.1,money:12273.07},8:{ret:0.32,money:1896.0},11:{ret:-1.95,money:-11692.0},12:{ret:-1.35,money:-7900.0},13:{ret:7.33,money:42405.57},14:{ret:-0.14,money:-838.74},15:{ret:-0.58,money:-3626.0},18:{ret:0.82,money:5032.0},19:{ret:-0.25,money:-1554.0},20:{ret:-0.24,money:-1517.0},21:{ret:-1.59,money:-9805.0},22:{ret:1.01,money:6142.0},25:{ret:0.47,money:2908.64},27:{ret:0.09,money:557.29},28:{ret:2.78,money:17220.0},29:{ret:-0.88,money:-5600.0}},
-  '2026-6': {1:{ret:0.19,money:1225.0},2:{ret:3.47,money:21910.0},3:{ret:0.56,money:3640.0},4:{ret:-1.33,money:-8750.0},5:{ret:-2.43,money:-15715.0},8:{ret:-1.98,money:-12530.0},9:{ret:2.41,money:14910.0},10:{ret:-1.05,money:-6642.3},16:{ret:0.79,money:4986.8},17:{ret:1.24,money:7860.0},18:{ret:5.91,money:37890.94},22:{ret:0.06,money:430.0},23:{ret:-4.82,money:-32738.0},24:{ret:1.82,money:11758.0},25:{ret:2.95,money:19426.0},26:{ret:-5.88,money:-39852.0},29:{ret:-2.23,money:-14239.71},30:{ret:2.05,money:12760.0}},
-  '2026-7': {1:{ret:-0.03,money:-209.88}},
-  '2026-8': {6:{ret:1.61,money:10261.27},7:{ret:-0.05,money:-342.0},10:{ret:0.59,money:3800.0},11:{ret:-1.85,money:-12046.0},12:{ret:-0.24,money:-1558.0},13:{ret:-0.22,money:-1406.0},14:{ret:0.57,money:3648.0},17:{ret:0.45,money:2874.32}},
-};
-const monthlyPnlData = {
-  '2025-7': {ret:-0.08,money:-379.3,up:false,win:1,loss:2},
-  '2025-8': {ret:-4.44,money:-22205.63,up:false,win:2,loss:6},
-  '2025-9': {ret:1.85,money:8822.74,up:true,win:2,loss:0},
-  '2025-10': {ret:-1.79,money:-8693.71,up:false,win:2,loss:3},
-  '2025-11': {ret:-0.14,money:-690.55,up:false,win:0,loss:1},
-  '2025-12': {ret:-2.43,money:-11604.02,up:false,win:7,loss:7},
-  '2026-1': {ret:3.84,money:17881.6,up:true,win:9,loss:6},
-  '2026-2': {ret:1.22,money:5870.75,up:true,win:3,loss:3},
-  '2026-3': {ret:0.49,money:2399.11,up:true,win:7,loss:8},
-  '2026-4': {ret:18.92,money:92982.88,up:true,win:13,loss:8},
-  '2026-5': {ret:7.8,money:45575.83,up:true,win:8,loss:9},
-  '2026-6': {ret:1.0,money:6329.73,up:true,win:11,loss:7},
-  '2026-7': {ret:-0.03,money:-209.88,up:false,win:0,loss:1},
-  '2026-8': {ret:0.82,money:5231.59,up:true,win:4,loss:4},
-};
-const yearlyPnlData = {
-  '2025': {ret:-6.95,money:-34750.47,up:false,win:1,loss:5},
-  '2026': {ret:37.84,money:176061.61,up:true,win:7,loss:1},
-};
-
 // ========== 初始化 ==========
 function init(){
   try{
@@ -781,8 +743,9 @@ function renderDetail(){
 function renderCalendar(){
   const t=currentTrader;
   const deals=(t&&t.deals)||[];
+  const navHistory=t&&t.navHistory?t.navHistory:{};
   // 无交易记录的组合显示空状态
-  if(deals.length===0){
+  if(deals.length===0 && Object.keys(navHistory).length===0){
     return `<div class="detail-section">
       <div class="ds-header"><span class="ds-title">收益日历</span></div>
       <div class="ds-body"><div class="holding-empty">暂无交易数据，调仓后将自动记录收益</div></div>
@@ -792,8 +755,56 @@ function renderCalendar(){
   const cYear=created.getFullYear(),cMonth=created.getMonth()+1,cDay=created.getDate();
   const now=new Date();
   const nowYear=now.getFullYear(),nowMonth=now.getMonth()+1,nowDay=now.getDate();
+  
+  // 基于navHistory计算每日收益率
+  const sortedNavDates=Object.keys(navHistory).sort();
+  const dailyReturns={}; // {date: ret}
+  for(let i=0;i<sortedNavDates.length;i++){
+    const date=sortedNavDates[i];
+    const nav=navHistory[date];
+    if(i===0){
+      // 第一天，收益率为0（或基于创建日期）
+      dailyReturns[date]=0;
+    }else{
+      const prevDate=sortedNavDates[i-1];
+      const prevNav=navHistory[prevDate];
+      if(prevNav>0){
+        dailyReturns[date]=((nav-prevNav)/prevNav)*100;
+      }
+    }
+  }
+  
+  // 基于每日收益率聚合月度数据
+  const monthlyReturns={}; // {year-month: {ret, win, loss}}
+  Object.entries(dailyReturns).forEach(([date,ret])=>{
+    const [y,m]=date.split('-');
+    const key=y+'-'+parseInt(m);
+    if(!monthlyReturns[key]) monthlyReturns[key]={ret:0,win:0,loss:0};
+    // 月度累计收益率（复利）
+    monthlyReturns[key].ret=((1+monthlyReturns[key].ret/100)*(1+ret/100)-1)*100;
+    if(ret>0) monthlyReturns[key].win++;
+    else if(ret<0) monthlyReturns[key].loss++;
+  });
+  
+  // 基于月度收益率聚合年度数据
+  const yearlyReturns={}; // {year: {ret, win, loss}}
+  Object.entries(monthlyReturns).forEach(([key,data])=>{
+    const y=key.split('-')[0];
+    if(!yearlyReturns[y]) yearlyReturns[y]={ret:0,win:0,loss:0};
+    yearlyReturns[y].ret=((1+yearlyReturns[y].ret/100)*(1+data.ret/100)-1)*100;
+    if(data.ret>0) yearlyReturns[y].win++;
+    else if(data.ret<0) yearlyReturns[y].loss++;
+  });
+  
   const monthKey=calendarYear+'-'+calendarMonth;
-  const curMonthData=dailyPnlData[monthKey];
+  const curMonthDailyReturns={};
+  Object.entries(dailyReturns).forEach(([date,ret])=>{
+    const [y,m,d]=date.split('-');
+    if(parseInt(y)===calendarYear && parseInt(m)===calendarMonth){
+      curMonthDailyReturns[parseInt(d)]=ret;
+    }
+  });
+  
   const calendarCells=[];
   const firstWeekday=new Date(calendarYear,calendarMonth-1,1).getDay();
   for(let i=0;i<firstWeekday;i++) calendarCells.push({empty:true});
@@ -804,20 +815,20 @@ function renderCalendar(){
     const isToday=calendarYear===nowYear&&calendarMonth===nowMonth&&day===nowDay;
     const isFuture=calendarYear>nowYear||(calendarYear===nowYear&&calendarMonth>nowMonth)||(calendarYear===nowYear&&calendarMonth===nowMonth&&day>nowDay);
     const isBeforeCreated=calendarYear<cYear||(calendarYear===cYear&&calendarMonth<cMonth)||(calendarYear===cYear&&calendarMonth===cMonth&&day<cDay);
-    const hasData=curMonthData&&curMonthData[day]&&!isWeekend&&!isFuture&&!isBeforeCreated;
+    const ret=curMonthDailyReturns[day];
+    const hasData=ret!==undefined && !isWeekend && !isFuture && !isBeforeCreated;
     if(!hasData){
       calendarCells.push({day,empty:false,nodata:true,isToday});
     }else{
-      const d=curMonthData[day];
-      calendarCells.push({day,empty:false,nodata:false,ret:d.ret,money:d.money,up:d.money>0,isToday});
+      calendarCells.push({day,empty:false,nodata:false,ret:ret,up:ret>0,isToday});
     }
   }
   const dayStats={win:0,loss:0};
   calendarCells.forEach(c=>{ if(!c.empty&&!c.nodata){ if(c.up)dayStats.win++; else dayStats.loss++; }});
   const monthBeforeCreated=calendarYear<cYear||(calendarYear===cYear&&calendarMonth<cMonth);
-  const curMonthStat=!monthBeforeCreated?monthlyPnlData[monthKey]:null;
-  const curYearStat=calendarYear>=cYear?yearlyPnlData[calendarYear]:null;
-  const totalYearStats=Object.entries(yearlyPnlData).filter(([y])=>parseInt(y)>=cYear).reduce((a,[,y])=>(y.up?a.win++:a.loss++,a),{win:0,loss:0});
+  const curMonthStat=!monthBeforeCreated?monthlyReturns[monthKey]:null;
+  const curYearStat=calendarYear>=cYear?yearlyReturns[calendarYear]:null;
+  const totalYearStats=Object.entries(yearlyReturns).filter(([y])=>parseInt(y)>=cYear).reduce((a,[,y])=>(y.ret>0?a.win++:a.loss++,a),{win:0,loss:0});
   const calMinYear=cYear,calMinMonth=cMonth,calMaxYear=nowYear,calMaxMonth=nowMonth;
   const showPrev = calendarView==='day' ? !(calendarYear===calMinYear&&calendarMonth<=calMinMonth) : calendarView==='month'?calendarYear>calMinYear:false;
   const showNext = calendarView==='day' ? !(calendarYear===calMaxYear&&calendarMonth>=calMaxMonth) : calendarView==='month'?calendarYear<calMaxYear:false;
@@ -829,28 +840,28 @@ function renderCalendar(){
       ${calendarCells.map(c=>{
         if(c.empty) return '<div class="cal-cell empty"></div>';
         if(c.nodata) return `<div class="cal-cell nodata ${c.isToday?'today':''}"><span class="day">${c.day}</span></div>`;
-        return `<div class="cal-cell ${c.up?'up':'down'} ${c.isToday?'today':''}"><span class="day">${c.day}</span><span class="ret">${(c.ret>0?'+':'')+c.ret}%</span></div>`;
+        return `<div class="cal-cell ${c.up?'up':'down'} ${c.isToday?'today':''}"><span class="day">${c.day}</span><span class="ret">${(c.ret>0?'+':'')+c.ret.toFixed(2)}%</span></div>`;
       }).join('')}
     </div>`;
   }else if(calendarView==='month'){
     body = `<div class="cal-month-grid">
       ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>{
         const mb=cYear>calendarYear||(cYear===calendarYear&&m<cMonth);
-        const md=!mb?monthlyPnlData[calendarYear+'-'+m]:null;
+        const md=!mb?monthlyReturns[calendarYear+'-'+m]:null;
         if(!md) return `<div class="cal-month-cell nodata"><span>${m}月</span></div>`;
-        return `<div class="cal-month-cell ${md.up?'up':'down'}"><span>${m}月</span><span class="ret">${md.ret>0?'+':''}${md.ret}%</span></div>`;
+        return `<div class="cal-month-cell ${md.ret>0?'up':'down'}"><span>${m}月</span><span class="ret">${md.ret>0?'+':''}${md.ret.toFixed(2)}%</span></div>`;
       }).join('')}
     </div>`;
   }else{
-    const ys=yearlyPnlData[calendarYear];
+    const ys=yearlyReturns[calendarYear];
     if(ys&&calendarYear>=cYear){
-      body=`<div class="cal-year-cell"><div style="font-size:16px">${calendarYear}年</div><div style="font-size:20px;font-weight:700;margin-top:6px;color:${ys.up?'var(--red)':'var(--green)'}">${ys.ret>0?'+':''}${ys.ret}%</div></div>`;
+      body=`<div class="cal-year-cell"><div style="font-size:16px">${calendarYear}年</div><div style="font-size:20px;font-weight:700;margin-top:6px;color:${ys.ret>0?'var(--red)':'var(--green)'}">${ys.ret>0?'+':''}${ys.ret.toFixed(2)}%</div></div>`;
     }else{
       body=`<div class="cal-year-cell"><div style="font-size:16px">${calendarYear}年</div><div style="font-size:14px;color:var(--text3);margin-top:6px">暂无数据</div></div>`;
     }
   }
 
-  const summaryRet = calendarView==='day' ? (curMonthStat?`<span class="${curMonthStat.up?'up':'down'}" style="font-weight:600">${curMonthStat.ret>0?'+':''}${curMonthStat.ret}%</span>`:'--') : calendarView==='month' ? (curYearStat?`<span class="${curYearStat.up?'up':'down'}" style="font-weight:600">${curYearStat.ret>0?'+':''}${curYearStat.ret}%</span>`:'--') : (curYearStat?`<span class="${curYearStat.up?'up':'down'}" style="font-weight:600">${curYearStat.ret>0?'+':''}${curYearStat.ret}%</span>`:'--');
+  const summaryRet = calendarView==='day' ? (curMonthStat?`<span class="${curMonthStat.ret>0?'up':'down'}" style="font-weight:600">${curMonthStat.ret>0?'+':''}${curMonthStat.ret.toFixed(2)}%</span>`:'--') : calendarView==='month' ? (curYearStat?`<span class="${curYearStat.ret>0?'up':'down'}" style="font-weight:600">${curYearStat.ret>0?'+':''}${curYearStat.ret.toFixed(2)}%</span>`:'--') : (curYearStat?`<span class="${curYearStat.ret>0?'up':'down'}" style="font-weight:600">${curYearStat.ret>0?'+':''}${curYearStat.ret.toFixed(2)}%</span>`:'--');
   const summaryWL = calendarView==='day'?`盈 ${curMonthStat?curMonthStat.win:0} / 亏 ${curMonthStat?curMonthStat.loss:0}`:calendarView==='month'?`盈 ${curYearStat?curYearStat.win:0} / 亏 ${curYearStat?curYearStat.loss:0}`:`盈 ${totalYearStats.win} / 亏 ${totalYearStats.loss}`;
 
   return `<div class="detail-section">
