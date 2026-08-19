@@ -970,6 +970,10 @@ function updateHoldingPrices(){
       // 更新图例中的沪深300收益率显示
       const hsLegendEl=document.querySelector('.chart-legend-item .hs300-legend-val');
       if(hsLegendEl) hsLegendEl.textContent=(hsChange>=0?'+':'')+hsChange.toFixed(2)+'%';
+      // 更新chartData中的沪深300数据（确保点击/滑动时显示正确）
+      if(chartData&&chartData.hsVals&&chartData.hsVals.length>0){
+        chartData.hsVals[chartData.hsVals.length-1]=hsChange;
+      }
     }
     // 确保cash初始化
     if(currentTrader.cash===undefined) currentTrader.cash=10000;
