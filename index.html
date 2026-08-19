@@ -596,11 +596,11 @@ function renderDetail(){
       <div class="dh-stats">
         <div class="dh-stat">
           <div class="dh-stat-label">最新净值</div>
-          <div class="dh-stat-val big">${t.nav}</div>
+          <div class="dh-stat-val big" id="comboNav">${t.nav}</div>
         </div>
         <div class="dh-stat">
           <div class="dh-stat-label">累计盈亏</div>
-          <div class="dh-stat-val ${t.ret.startsWith('+')?'up':'down'}">${t.ret}</div>
+          <div class="dh-stat-val ${t.ret.startsWith('+')?'up':'down'}" id="comboRet">${t.ret}</div>
         </div>
         <div class="dh-stat">
           <div class="dh-stat-label">今日盈亏</div>
@@ -800,6 +800,8 @@ function getFirstBuyDate(code){
 // 批量更新持仓股票的现价
 function updateHoldingPrices(){
   const holdings=(currentTrader&&currentTrader.holdings)||[];
+  const deals=(currentTrader&&currentTrader.deals)||[];
+  const todayStr=new Date().toISOString().split('T')[0];
   const codes=holdings.map(h=>h.code);
   // 同时获取沪深300指数行情
   codes.push('sh000300');
@@ -810,8 +812,10 @@ function updateHoldingPrices(){
       const hsChange=((parseFloat(hs300.price)-parseFloat(hs300.prevClose))/parseFloat(hs300.prevClose)*100);
       updateHS300Path(hsChange);
     }
+    // 确保cash初始化
+    if(currentTrader.cash===undefined) currentTrader.cash=100;
     // 第一步：计算总市值 = 现金 + 各持仓市值
-    let totalMV=(currentTrader.cash||0);
+    let totalMV=currentTrader.cash;
     const priceMap={};
     holdings.forEach(h=>{
       const quote=results[h.code];
@@ -837,15 +841,21 @@ function updateHoldingPrices(){
       // 更新现价
       const priceEl=document.querySelector('.quote-price[data-code="'+code+'"]');
       if(priceEl&&quote&&quote.price) priceEl.textContent=quote.price;
-      // 今日收益率
-      if(prevClose>0){
-        const todayPnl=((price-prevClose)/prevClose*100);
-        const todayStr=(todayPnl>=0?'+':'')+todayPnl.toFixed(2)+'%';
-        const todayEl=document.querySelector('.today-pnl[data-code="'+code+'"]');
-        if(todayEl){todayEl.textContent=todayStr;todayEl.className='today-pnl '+(todayPnl>=0?'up':'down');}
-        h.todayPnl=todayStr;
-        weightedTodayPnl+=todayPnl*dynamicRatio;
+      // 判断是否今日新建仓（该股票最早买入日期是今天）
+      const stockBuys=deals.filter(d=>d.code===code&&d.dir==='买入');
+      const isNewToday=stockBuys.length>0&&stockBuys.every(d=>d.date===todayStr);
+      // 今日收益率：今日新建仓用成本价，否则用昨收价
+      let todayPnl=0;
+      if(isNewToday&&cost>0){
+        todayPnl=((price-cost)/cost*100);
+      }else if(prevClose>0){
+        todayPnl=((price-prevClose)/prevClose*100);
       }
+      const todayStr2=(todayPnl>=0?'+':'')+todayPnl.toFixed(2)+'%';
+      const todayEl=document.querySelector('.today-pnl[data-code="'+code+'"]');
+      if(todayEl){todayEl.textContent=todayStr2;todayEl.className='today-pnl '+(todayPnl>=0?'up':'down');}
+      h.todayPnl=todayStr2;
+      weightedTodayPnl+=todayPnl*dynamicRatio;
       // 累计收益率
       if(cost>0){
         const cumPnl=((price-cost)/cost*100);
@@ -856,7 +866,7 @@ function updateHoldingPrices(){
       }
     });
     // 更新剩余仓位
-    const remainingRatio=totalMV>0?(currentTrader.cash||0)/totalMV*100:100;
+    const remainingRatio=totalMV>0?currentTrader.cash/totalMV*100:100;
     const remainingEl=document.querySelector('.holding-footer span:last-child');
     if(remainingEl) remainingEl.textContent=remainingRatio.toFixed(1)+'%';
     // 组合今日盈亏
@@ -864,7 +874,19 @@ function updateHoldingPrices(){
     const comboStr=(comboToday>=0?'+':'')+comboToday.toFixed(2)+'%';
     const comboEl=document.getElementById('comboTodayPnl');
     if(comboEl){comboEl.textContent=comboStr;comboEl.className='dh-stat-val '+(comboToday>=0?'up':'down');}
-    if(currentTrader) currentTrader.today=comboStr;
+    currentTrader.today=comboStr;
+    // 组合累计盈亏和净值（初始资金100）
+    const initialCapital=100;
+    const nav=totalMV/initialCapital;
+    const cumRet=(nav-1)*100;
+    currentTrader.nav=nav.toFixed(4);
+    currentTrader.ret=(cumRet>=0?'+':'')+cumRet.toFixed(2)+'%';
+    // 更新页面上的净值和累计盈亏显示
+    const navEl=document.getElementById('comboNav');
+    if(navEl) navEl.textContent=currentTrader.nav;
+    const retEl=document.getElementById('comboRet');
+    if(retEl){retEl.textContent=currentTrader.ret;retEl.className='dh-stat-val '+(cumRet>=0?'up':'down');}
+    saveTraders();
   });
 }
 
@@ -1193,7 +1215,7 @@ function confirmPortfolio(){
       rank:allTraders.length+1,name,strategy:styles.join('、'),nav:'1.0000',ret:'+0.00%',today:'+0.00%',month:'+0.00%',
       win:'50%',ratio:'1.00',draw:'-0.00%',hold:0,deal:0,days:0,realized:'+0.00%',
       color:colors[allTraders.length%colors.length],created:dateStr,tags:styles,desc:'用户创建的组合。',
-      holdings:[],deals:[]
+      holdings:[],deals:[],cash:100
     });
   }
   saveTraders();
