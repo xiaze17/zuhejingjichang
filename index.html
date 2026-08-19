@@ -617,11 +617,11 @@ function renderDetail(){
       <div class="ds-header"><span class="ds-title">核心指标</span></div>
       <div class="ds-body" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
         <div class="dh-stat"><div class="dh-stat-label">胜率</div><div class="dh-stat-val" data-field="win">${t.win}</div></div>
-        <div class="dh-stat"><div class="dh-stat-label">盈亏比</div><div class="dh-stat-val">${t.ratio}</div></div>
-        <div class="dh-stat"><div class="dh-stat-label">最大回撤</div><div class="dh-stat-val down">${t.draw}</div></div>
-        <div class="dh-stat"><div class="dh-stat-label">持仓数</div><div class="dh-stat-val">${t.hold}</div></div>
-        <div class="dh-stat"><div class="dh-stat-label">成交数</div><div class="dh-stat-val">${t.deal}</div></div>
-        <div class="dh-stat"><div class="dh-stat-label">交易天数</div><div class="dh-stat-val">${t.days}</div></div>
+        <div class="dh-stat"><div class="dh-stat-label">盈亏比</div><div class="dh-stat-val" data-field="ratio">${t.ratio}</div></div>
+        <div class="dh-stat"><div class="dh-stat-label">最大回撤</div><div class="dh-stat-val down" data-field="draw">${t.draw}</div></div>
+        <div class="dh-stat"><div class="dh-stat-label">持仓数</div><div class="dh-stat-val" data-field="hold">${t.hold}</div></div>
+        <div class="dh-stat"><div class="dh-stat-label">成交数</div><div class="dh-stat-val" data-field="deal">${t.deal}</div></div>
+        <div class="dh-stat"><div class="dh-stat-label">交易天数</div><div class="dh-stat-val" data-field="days">${t.days}</div></div>
       </div>
     </div>
   `;
@@ -891,21 +891,67 @@ function updateHoldingPrices(){
     if(navEl) navEl.textContent=currentTrader.nav;
     const retEl=document.getElementById('comboRet');
     if(retEl){retEl.textContent=currentTrader.ret;retEl.className='dh-stat-val '+(cumRet>=0?'up':'down');}
-    // 更新胜率：基于卖出交易计算（盈利卖出/总卖出）
+    // ===== 雪球逻辑：完整指标计算 =====
+    // 1. 胜率 & 盈亏比（基于卖出交易，加权平均买入价）
     const sellDeals=deals.filter(d=>d.dir==='卖出');
-    let winSells=0;
+    let winSells=0,totalProfit=0,totalLoss=0,profitCount=0,lossCount=0;
     sellDeals.forEach(d=>{
       const sellPrice=parseFloat(d.price);
+      const sellShares=d.shares||0;
+      // 计算该股票在卖出日期前的加权平均买入价
       const stockBuys=deals.filter(dd=>dd.code===d.code&&dd.dir==='买入'&&dd.date<=d.date);
       if(stockBuys.length>0){
-        const avgBuy=stockBuys.reduce((s,dd)=>s+parseFloat(dd.price),0)/stockBuys.length;
-        if(sellPrice>avgBuy) winSells++;
+        const totalBuyAmount=stockBuys.reduce((s,dd)=>s+parseFloat(dd.price)*(dd.shares||0),0);
+        const totalBuyShares=stockBuys.reduce((s,dd)=>s+(dd.shares||0),0);
+        const avgBuy=totalBuyShares>0?totalBuyAmount/totalBuyShares:0;
+        const pnl=(sellPrice-avgBuy)*sellShares;
+        if(sellPrice>avgBuy){
+          winSells++;
+          totalProfit+=pnl;
+          profitCount++;
+        }else{
+          totalLoss+=Math.abs(pnl);
+          lossCount++;
+        }
       }
     });
     const winRate=sellDeals.length>0?(winSells/sellDeals.length*100).toFixed(0)+'%':'0%';
+    const avgProfit=profitCount>0?totalProfit/profitCount:0;
+    const avgLoss=lossCount>0?totalLoss/lossCount:0;
+    const profitLossRatio=avgLoss>0?(avgProfit/avgLoss).toFixed(2):(profitCount>0?'∞':'0.00');
     currentTrader.win=winRate;
+    currentTrader.ratio=profitLossRatio;
+
+    // 2. 最大回撤（基于历史净值）
+    if(!currentTrader.navHistory) currentTrader.navHistory={};
+    currentTrader.navHistory[todayStr]=nav;
+    const navDates=Object.keys(currentTrader.navHistory).sort();
+    let maxDrawdown=0,peakNav=0;
+    navDates.forEach(date=>{
+      const n=currentTrader.navHistory[date];
+      if(n>peakNav) peakNav=n;
+      const dd=((peakNav-n)/peakNav)*100;
+      if(dd>maxDrawdown) maxDrawdown=dd;
+    });
+    currentTrader.draw='-'+maxDrawdown.toFixed(2)+'%';
+
+    // 3. 交易天数（从首次交易到今天的交易日数）
+    if(deals.length>0){
+      const firstDealDate=deals.reduce((min,d)=>d.date<min?d.date:min,deals[0].date);
+      currentTrader.days=countTradingDays(firstDealDate);
+    }else{
+      currentTrader.days=0;
+    }
+
+    // 更新页面显示
     const winEl=document.querySelector('.dh-stat-val[data-field="win"]');
     if(winEl) winEl.textContent=winRate;
+    const ratioEl=document.querySelector('.dh-stat-val[data-field="ratio"]');
+    if(ratioEl) ratioEl.textContent=profitLossRatio;
+    const drawEl=document.querySelector('.dh-stat-val[data-field="draw"]');
+    if(drawEl){drawEl.textContent=currentTrader.draw;drawEl.className='dh-stat-val down';}
+    const daysEl=document.querySelector('.dh-stat-val[data-field="days"]');
+    if(daysEl) daysEl.textContent=currentTrader.days;
     saveTraders();
   });
 }
@@ -1233,9 +1279,9 @@ function confirmPortfolio(){
     const colors=['#13c2c2','#722ed1','#faad14','#eb2f96','#fa8c16','#f5222d','#2f54eb','#52c41a'];
     allTraders.push({
       rank:allTraders.length+1,name,strategy:styles.join('、'),nav:'1.0000',ret:'+0.00%',today:'+0.00%',month:'+0.00%',
-      win:'50%',ratio:'1.00',draw:'-0.00%',hold:0,deal:0,days:0,realized:'+0.00%',
+      win:'0%',ratio:'0.00',draw:'-0.00%',hold:0,deal:0,days:0,realized:'+0.00%',
       color:colors[allTraders.length%colors.length],created:dateStr,tags:styles,desc:'用户创建的组合。',
-      holdings:[],deals:[],cash:10000
+      holdings:[],deals:[],cash:10000,navHistory:{}
     });
   }
   saveTraders();
@@ -1535,6 +1581,15 @@ function confirmRebalance(){
     holdings.push({code,stock,cost:price.toFixed(2),ratio:newRatio.toFixed(1)+'%',shares:buyShares,costAmount:buyAmount,todayPnl:'+0.00%',cumPnl:'+0.00%',logic});
     currentTrader.cash=(currentTrader.cash||0)-buyAmount;
   }
+  
+  // 计算成交股数并保存到成交记录
+  let dealShares=0;
+  if(dir==='买入'){
+    dealShares=(targetAmount-currentAmount)/price;
+  }else{
+    dealShares=(currentAmount-targetAmount)/price;
+  }
+  if(deals[0]) deals[0].shares=dealShares;
   
   // 更新组合统计
   currentTrader.hold = currentTrader.holdings.length;
