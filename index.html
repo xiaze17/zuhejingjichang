@@ -756,30 +756,28 @@ function renderCalendar(){
   const now=new Date();
   const nowYear=now.getFullYear(),nowMonth=now.getMonth()+1,nowDay=now.getDate();
   
-  // 基于navHistory计算每日收益率
+  // 计算每日收益率（日视图每个日期显示当日持仓盈亏）
   const sortedNavDates=Object.keys(navHistory).sort();
-  const dailyReturns={}; // {date: ret}
+  const dailyReturns={}; // {date: 当日收益率}
   const todayStr=new Date().toISOString().split('T')[0];
-  const todayPnl=parsePct(t&&t.today?t.today:'0%'); // 今日盈亏（已计算好）
-  for(let i=0;i<sortedNavDates.length;i++){
-    const date=sortedNavDates[i];
+  const todayPnl=parsePct(t&&t.today?t.today:'0%'); // 今日持仓盈亏（已在详情页计算好）
+  
+  sortedNavDates.forEach((date,i)=>{
     const nav=navHistory[date];
-    if(i===0){
-      // 第一天：如果是今日，使用今日盈亏数据；否则用初始净值1作为基准
-      if(date===todayStr){
-        dailyReturns[date]=todayPnl;
-      }else{
-        dailyReturns[date]=((nav-1)/1)*100;
-      }
-    }else{
-      const prevDate=sortedNavDates[i-1];
-      const prevNav=navHistory[prevDate];
+    if(date===todayStr){
+      // 今日：直接使用今日持仓盈亏数据
+      dailyReturns[date]=todayPnl;
+    }else if(i>0){
+      // 其他历史日期：(当日净值-前一日净值)/前一日净值×100%
+      const prevNav=navHistory[sortedNavDates[i-1]];
       if(prevNav>0){
         dailyReturns[date]=((nav-prevNav)/prevNav)*100;
       }
     }
-  }
-  // 如果今日有交易但navHistory中没有今日数据（时序问题），补充今日收益率
+    // 历史第一天(i===0且非今日)：没有前一日净值，无法计算当日盈亏，不显示
+  });
+  
+  // 补充今日数据（如果有交易但navHistory时序问题未记录）
   if(deals.length>0 && !dailyReturns[todayStr]){
     dailyReturns[todayStr]=todayPnl;
   }
