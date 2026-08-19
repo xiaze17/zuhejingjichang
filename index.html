@@ -736,6 +736,12 @@ function renderDetail(){
   html += renderDeals();
 
   document.getElementById('detailContent').innerHTML = html;
+  // 默认选中最后一个点（今日），显示累计收益率
+  setTimeout(function(){
+    if(chartData&&chartData.trendW){
+      updateChartSelection(chartData.trendW);
+    }
+  },50);
   updateHoldingPrices();
   startDateTimeTimer();
 }
@@ -973,6 +979,12 @@ function updateHoldingPrices(){
       // 更新chartData中的沪深300数据（确保点击/滑动时显示正确）
       if(chartData&&chartData.hsVals&&chartData.hsVals.length>0){
         chartData.hsVals[chartData.hsVals.length-1]=hsChange;
+      }
+      // 直接更新下方累计数据小模块中的沪深300显示（如果已显示）
+      const hsSelectedEl=document.getElementById('chartSelectedHs');
+      if(hsSelectedEl){
+        hsSelectedEl.textContent=(hsChange>=0?'+':'')+hsChange.toFixed(2)+'%';
+        hsSelectedEl.style.color=hsChange>=0?'var(--red)':'var(--green)';
       }
     }
     // 确保cash初始化
