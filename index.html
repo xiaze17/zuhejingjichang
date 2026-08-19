@@ -763,8 +763,8 @@ function renderCalendar(){
     const date=sortedNavDates[i];
     const nav=navHistory[date];
     if(i===0){
-      // 第一天，收益率为0（或基于创建日期）
-      dailyReturns[date]=0;
+      // 第一天，用初始净值1作为基准，收益率=(当日净值-1)/1×100%
+      dailyReturns[date]=((nav-1)/1)*100;
     }else{
       const prevDate=sortedNavDates[i-1];
       const prevNav=navHistory[prevDate];
