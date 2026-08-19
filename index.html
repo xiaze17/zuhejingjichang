@@ -133,6 +133,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 /* 走势图 */
 .chart-container{width:100%;overflow-x:auto}
 .chart-container svg{width:100%;height:auto;min-width:320px}
+.chart-period-tabs{display:flex;gap:0;margin-bottom:12px;border-bottom:1px solid var(--border)}
+.chart-period-tab{padding:6px 16px;font-size:13px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s}
+.chart-period-tab.active{color:var(--gold);border-bottom-color:var(--gold);font-weight:600}
 .chart-legend{display:flex;gap:14px;margin-bottom:10px;font-size:11px;flex-wrap:wrap}
 .chart-legend-item{display:flex;align-items:center;gap:5px}
 .chart-legend-line{width:14px;height:2px}
@@ -403,6 +406,7 @@ let calendarMonth = 8;
 let calendarYear = 2026;
 let yieldPeriod = '3m';
 let chartData={comboVals:[],hsVals:[],xLabels:[],created:null}; // 走势图数据，供点击查询
+let chartPeriod='3m'; // 走势图时间段：3m=近3个月，1y=最近1年，all=全部
 
 // 默认持仓和成交数据
 const DEFAULT_HOLDINGS = [
@@ -978,6 +982,91 @@ function updateHS300Path(changePct){
 }
 
 // ========== 走势图 ==========
+// 基于历史净值生成曲线数据（雪球逻辑）
+function generateChartData(period){
+  const t=currentTrader;
+  const navHistory=t.navHistory||{};
+  const created=t.created?new Date(t.created):new Date();
+  const now=new Date();
+  
+  // 确定时间范围
+  let startDate=new Date(created);
+  if(period==='3m'){
+    startDate=new Date(now.getTime()-90*24*60*60*1000);
+    if(startDate<created) startDate=created;
+  }else if(period==='1y'){
+    startDate=new Date(now.getTime()-365*24*60*60*1000);
+    if(startDate<created) startDate=created;
+  }
+  
+  // 生成交易日列表
+  const tradingDays=[];
+  const cur=new Date(startDate);
+  cur.setHours(0,0,0,0);
+  const end=new Date(now);
+  end.setHours(0,0,0,0);
+  while(cur<=end){
+    const day=cur.getDay();
+    const ds=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
+    if(day!==0&&day!==6&&!MARKET_HOLIDAYS.includes(ds)){
+      tradingDays.push(ds);
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  
+  if(tradingDays.length===0) return {dates:[],comboVals:[],hsVals:[]};
+  
+  // 获取当前净值
+  const currentNav=parseFloat(t.nav)||1.0;
+  
+  // 生成组合收益率数据（基于历史净值，缺失则线性插值）
+  const comboVals=[];
+  const navDates=Object.keys(navHistory).sort();
+  let lastKnownNav=1.0;
+  let lastKnownIdx=0;
+  
+  tradingDays.forEach((date,idx)=>{
+    if(navHistory[date]!==undefined){
+      lastKnownNav=navHistory[date];
+      lastKnownIdx=idx;
+    }
+    // 线性插值：如果当前日期没有历史净值，基于已知点估算
+    let nav=lastKnownNav;
+    if(navHistory[date]===undefined && idx>lastKnownIdx){
+      // 找下一个已知点
+      let nextKnownIdx=-1,nextKnownNav=lastKnownNav;
+      for(let i=idx+1;i<tradingDays.length;i++){
+        if(navHistory[tradingDays[i]]!==undefined){
+          nextKnownIdx=i;
+          nextKnownNav=navHistory[tradingDays[i]];
+          break;
+        }
+      }
+      if(nextKnownIdx>lastKnownIdx){
+        const ratio=(idx-lastKnownIdx)/(nextKnownIdx-lastKnownIdx);
+        nav=lastKnownNav+(nextKnownNav-lastKnownNav)*ratio;
+      }
+    }
+    // 最后一天使用当前净值
+    if(idx===tradingDays.length-1) nav=currentNav;
+    // 收益率=(净值-1)/1*100%（雪球逻辑）
+    comboVals.push((nav-1)*100);
+  });
+  
+  // 生成沪深300收益率数据（模拟，后续可对接实时）
+  const hsVals=[];
+  const hsEnd=7.8;
+  tradingDays.forEach((date,idx)=>{
+    const progress=idx/(tradingDays.length-1||1);
+    let hsY=hsEnd*progress+Math.sin(idx*0.5)*2+Math.sin(idx*0.9)*1;
+    if(idx===0) hsY=0;
+    if(idx===tradingDays.length-1) hsY=hsEnd;
+    hsVals.push(hsY);
+  });
+  
+  return {dates:tradingDays,comboVals,hsVals};
+}
+
 function renderChart(){
   const t=currentTrader;
   const deals=(t&&t.deals)||[];
@@ -988,24 +1077,41 @@ function renderChart(){
       <div class="ds-body"><div class="holding-empty">暂无交易数据，调仓后将自动生成走势</div></div>
     </div>`;
   }
-  const _baseRet=parsePct(t.ret);
-  const created=t&&t.created?new Date(t.created):new Date(2025,6,1);
-  const now=new Date();
-  function genLabels(start,end,count){
-    const labels=[];const diff=(end-start)/(count-1);
-    for(let i=0;i<count;i++){const d=new Date(start.getTime()+diff*i);labels.push(String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));}
-    return labels;
+  
+  // 基于时间段生成数据
+  const chartData_raw=generateChartData(chartPeriod);
+  if(chartData_raw.dates.length===0){
+    return `<div class="detail-section">
+      <div class="ds-header"><span class="ds-title">收益率走势</span></div>
+      <div class="ds-body"><div class="holding-empty">该时间段暂无数据</div></div>
+    </div>`;
   }
-  // 统一使用从创建日期到当前日期的走势
-  const xLabels=genLabels(created,now,6);
-  const endRet=_baseRet;
-  const hsEnd=7.8; // 沪深300模拟基准，实时数据会更新曲线
+  
+  const comboVals=chartData_raw.comboVals;
+  const hsVals=chartData_raw.hsVals;
+  const dates=chartData_raw.dates;
+  const endRet=comboVals[comboVals.length-1];
   const periodReturnStr=(endRet>=0?'+':'')+endRet.toFixed(2)+'%';
+  
+  // 生成X轴标签（6个点）
+  const xLabels=[];
+  const labelCount=Math.min(6,dates.length);
+  for(let i=0;i<labelCount;i++){
+    const idx=Math.floor(i*(dates.length-1)/(labelCount-1||1));
+    const d=new Date(dates[idx]);
+    xLabels.push(String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+  }
+  
   const trendW=800,trendH=240,trendPadTop=20,trendPadBottom=30;
-  const trendYMax=Math.max(50,Math.ceil((endRet+5)/10)*10);
-  const trendYMin=-15;
+  const allVals=[...comboVals,...hsVals];
+  const maxVal=Math.max(...allVals,5);
+  const minVal=Math.min(...allVals,-5);
+  const trendYMax=Math.ceil(maxVal/5)*5+5;
+  const trendYMin=Math.floor(minVal/5)*5-5;
   function trendY(v){ return trendPadTop+(trendYMax-v)/(trendYMax-trendYMin)*(trendH-trendPadTop-trendPadBottom); }
-  const yTicks=[trendYMin,0,Math.round(trendYMax*0.5/5)*5,trendYMax];
+  const yTickStep=Math.ceil((trendYMax-trendYMin)/4/5)*5;
+  const yTicks=[];
+  for(let v=trendYMin;v<=trendYMax;v+=yTickStep) yTicks.push(v);
   const yGrid=yTicks.map(v=>`<line x1="0" y1="${trendY(v).toFixed(1)}" x2="800" y2="${trendY(v).toFixed(1)}" stroke="${v===0?'#444':'#2a2a2a'}" stroke-width="${v===0?'0.8':'0.5'}" stroke-dasharray="3"/>`).join('');
   const yLabel=yTicks.map(v=>`<text x="2" y="${(trendY(v)+4).toFixed(1)}" fill="${v===0?'#aaa':'#888'}" font-size="10">${v}%</text>`).join('');
   const xLabel=xLabels.map((d,i)=>{
@@ -1013,43 +1119,43 @@ function renderChart(){
     const anchor=i===0?'start':i===xLabels.length-1?'end':'middle';
     return `<text x="${x.toFixed(1)}" y="255" fill="#888" font-size="10" text-anchor="${anchor}">${d}</text>`;
   }).join('');
-  const trendPoints=52;
-  let comboPath='',comboY=0,comboVals=[];
-  for(let j=0;j<trendPoints;j++){
-    const progress=j/(trendPoints-1);
-    comboY=endRet*progress+Math.sin(j*0.7)*3+Math.sin(j*1.3)*1.5+(j%7===0?(Math.random()-0.5)*4:0);
-    if(j===0)comboY=0;
-    if(j===trendPoints-1)comboY=endRet;
-    comboVals.push(comboY);
-    comboPath+=(j===0?'M':'L')+(j*trendW/(trendPoints-1)).toFixed(1)+','+trendY(comboY).toFixed(1)+' ';
-  }
-  // 沪深300曲线：无交易记录时也为0，有记录时用模拟数据（后续可对接实时）
-  let hsPath='',hsY=0,hsVals=[];
-  for(let j=0;j<trendPoints;j++){
-    const progress=j/(trendPoints-1);
-    hsY=hsEnd*progress+Math.sin(j*0.5)*2+Math.sin(j*0.9)*1;
-    if(j===0)hsY=0;
-    if(j===trendPoints-1)hsY=hsEnd;
-    hsVals.push(hsY);
-    hsPath+=(j===0?'M':'L')+(j*trendW/(trendPoints-1)).toFixed(1)+','+trendY(hsY).toFixed(1)+' ';
-  }
+  
+  // 生成曲线路径
+  const points=comboVals.length;
+  let comboPath='',hsPath='';
+  comboVals.forEach((v,j)=>{
+    const x=j*trendW/(points-1||1);
+    comboPath+=(j===0?'M':'L')+x.toFixed(1)+','+trendY(v).toFixed(1)+' ';
+  });
+  hsVals.forEach((v,j)=>{
+    const x=j*trendW/(points-1||1);
+    hsPath+=(j===0?'M':'L')+x.toFixed(1)+','+trendY(v).toFixed(1)+' ';
+  });
+  
   // 保存图表数据供点击查询
-  chartData={comboVals,hsVals,xLabels,created,trendW,trendYMax,trendYMin,trendPadTop,trendH,trendPadBottom};
-  const rebalanceIdx=[5,14,26,38,47];
-  const rebalanceDots=rebalanceIdx.filter(i=>i<comboVals.length).map(i=>({x:(i*trendW/(trendPoints-1)).toFixed(1),y:trendY(comboVals[i]).toFixed(1)}));
+  chartData={comboVals,hsVals,xLabels,dates,created:t.created,trendW,trendYMax,trendYMin,trendPadTop,trendH,trendPadBottom};
+  
   const zeroY=trendY(0);
   const comboFillPath=comboPath+'L'+trendW+','+zeroY+' L0,'+zeroY+' Z';
   const rebalanceTotal=deals.length;
   const rebalanceWin=deals.filter(d=>d.dir==='卖出').length;
   const rebalanceWinRate=rebalanceTotal>0?(rebalanceWin/rebalanceTotal*100).toFixed(2)+'%':'0.00%';
+  
+  // 时间段切换按钮
+  const periodTabs=`
+    <div class="chart-period-tabs">
+      <div class="chart-period-tab ${chartPeriod==='3m'?'active':''}" onclick="switchChartPeriod('3m')">近3个月</div>
+      <div class="chart-period-tab ${chartPeriod==='1y'?'active':''}" onclick="switchChartPeriod('1y')">最近1年</div>
+      <div class="chart-period-tab ${chartPeriod==='all'?'active':''}" onclick="switchChartPeriod('all')">全部</div>
+    </div>`;
 
   return `<div class="detail-section">
-    <div class="ds-header"><span class="ds-title">收益率走势</span></div>
+    <div class="ds-header"><span class="ds-title">收益率走势</span><span style="font-size:11px;color:var(--text3);margin-left:8px">创建于 ${t.created||'-'}</span></div>
     <div class="ds-body">
+      ${periodTabs}
       <div class="chart-legend">
-        <span class="chart-legend-item"><span class="chart-legend-line" style="background:var(--gold)"></span>本组合</span>
-        <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--gold)"></span>调仓点</span>
-        <span class="chart-legend-item"><span class="chart-legend-line" style="background:#4A90D9"></span>沪深300</span>
+        <span class="chart-legend-item"><span class="chart-legend-line" style="background:var(--gold)"></span>本组合 ${periodReturnStr}</span>
+        <span class="chart-legend-item"><span class="chart-legend-line" style="background:#4A90D9"></span>沪深300 +${hsVals[hsVals.length-1].toFixed(2)}%</span>
       </div>
       <div class="chart-container">
         <svg viewBox="0 0 800 260" preserveAspectRatio="xMidYMid meet">
@@ -1058,7 +1164,6 @@ function renderChart(){
           <path d="${comboFillPath}" fill="url(#comboGrad)"/>
           <path id="hs300Path" d="${hsPath}" fill="none" stroke="#4A90D9" stroke-width="1.5" opacity="0.8"/>
           <path id="comboPath" d="${comboPath}" fill="none" stroke="var(--gold)" stroke-width="2"/>
-          ${rebalanceDots.map(d=>`<circle cx="${d.x}" cy="${d.y}" r="4" fill="var(--gold)" stroke="#1a1a2e" stroke-width="1.5"/>`).join('')}
           <!-- 点击参考线和数据点 -->
           <line id="chartVLine" x1="0" y1="20" x2="0" y2="230" stroke="#888" stroke-width="1" stroke-dasharray="4" style="display:none"/>
           <circle id="chartComboDot" cx="0" cy="0" r="5" fill="var(--gold)" stroke="#1a1a2e" stroke-width="2" style="display:none"/>
@@ -1098,6 +1203,12 @@ function renderChart(){
   </div>`;
 }
 
+// 切换走势图时间段
+function switchChartPeriod(period){
+  chartPeriod=period;
+  renderDetail();
+}
+
 // 走势图滑动状态
 let chartDragging=false;
 
@@ -1108,10 +1219,8 @@ function updateChartSelection(x){
   const idx=Math.round(x/chartData.trendW*(chartData.comboVals.length-1));
   const comboRet=chartData.comboVals[idx];
   const hsRet=chartData.hsVals[idx];
-  const created=chartData.created;
-  const now=new Date();
-  const date=new Date(created.getTime()+(now-created)*idx/(chartData.comboVals.length-1));
-  const dateStr=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+  // 使用dates数组获取日期
+  const dateStr=chartData.dates&&chartData.dates[idx]?chartData.dates[idx]:'--';
   const dotX=(idx*chartData.trendW/(chartData.comboVals.length-1)).toFixed(1);
   const trendY=v=>chartData.trendPadTop+(chartData.trendYMax-v)/(chartData.trendYMax-chartData.trendYMin)*(chartData.trendH-chartData.trendPadTop-chartData.trendPadBottom);
   document.getElementById('chartVLine').setAttribute('x1',dotX);
