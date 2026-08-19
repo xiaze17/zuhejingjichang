@@ -1365,7 +1365,8 @@ function updateChartSelection(x){
   x=Math.max(0,Math.min(chartData.trendW,x));
   const idx=Math.round(x/chartData.trendW*(chartData.comboVals.length-1));
   const comboRet=chartData.comboVals[idx];
-  const hsRet=chartData.hsVals[idx];
+  // 最后一个点（今日）直接使用实时获取的hs300Change，确保数据正确
+  const hsRet=(idx===chartData.hsVals.length-1)?hs300Change:chartData.hsVals[idx];
   // 使用dates数组获取日期
   const dateStr=chartData.dates&&chartData.dates[idx]?chartData.dates[idx]:'--';
   const dotX=(idx*chartData.trendW/(chartData.comboVals.length-1)).toFixed(1);
