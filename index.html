@@ -1377,10 +1377,11 @@ function updateChartSelection(x){
   x=Math.max(0,Math.min(chartData.trendW,x));
   const idx=Math.round(x/chartData.trendW*(chartData.comboVals.length-1));
   const comboRet=chartData.comboVals[idx];
-  // 最后一个点（今日）直接使用实时获取的hs300Change，确保数据正确
-  const hsRet=(idx===chartData.hsVals.length-1)?hs300Change:chartData.hsVals[idx];
   // 使用dates数组获取日期
   const dateStr=chartData.dates&&chartData.dates[idx]?chartData.dates[idx]:'--';
+  const todayStr=new Date().toISOString().split('T')[0];
+  // 只要选中的日期是今日，就直接使用实时获取的hs300Change，不依赖idx判断
+  const hsRet=(dateStr===todayStr)?hs300Change:(chartData.hsVals[idx]||0);
   const dotX=(idx*chartData.trendW/(chartData.comboVals.length-1)).toFixed(1);
   const trendY=v=>chartData.trendPadTop+(chartData.trendYMax-v)/(chartData.trendYMax-chartData.trendYMin)*(chartData.trendH-chartData.trendPadTop-chartData.trendPadBottom);
   document.getElementById('chartVLine').setAttribute('x1',dotX);
