@@ -410,6 +410,33 @@ function getStockQuotes(codes,callback){
   document.body.appendChild(script);
 }
 
+// 股票名搜索（新浪财经接口，支持JSONP）
+function searchStockByName(keyword,callback){
+  if(!keyword||keyword.length<2){ callback([]); return; }
+  const script=document.createElement('script');
+  script.src='https://suggest3.sinajs.cn/suggest/type=11,12,13,14,15&key='+encodeURIComponent(keyword);
+  script.onload=function(){
+    const results=[];
+    if(window.suggestvalue){
+      const items=window.suggestvalue.split(';');
+      items.forEach(item=>{
+        const fields=item.split(',');
+        if(fields.length>=4&&fields[2]&&/^\d{6}$/.test(fields[2])){
+          results.push({code:fields[2],name:fields[0],fullCode:fields[3]});
+        }
+      });
+    }
+    try{document.body.removeChild(script);}catch(e){}
+    window.suggestvalue='';
+    callback(results);
+  };
+  script.onerror=function(){
+    try{document.body.removeChild(script);}catch(e){}
+    callback([]);
+  };
+  document.body.appendChild(script);
+}
+
 // 全局状态
 let allTraders;
 let styleOptions;
@@ -1793,6 +1820,7 @@ function onRbCodeInput(){
 function onRbStockInput(){
   const stock=document.getElementById('rbStock').value.trim();
   let foundCode='';
+  // 先在本地STOCK_MAP中查找
   for(const c in STOCK_MAP){ if(STOCK_MAP[c]===stock){document.getElementById('rbCode').value=c;foundCode=c;break;} }
   const holdings=(currentTrader&&currentTrader.holdings)||[];
   const existing=holdings.find(h=>h.stock===stock);
@@ -1800,6 +1828,19 @@ function onRbStockInput(){
   if(foundCode&&/^\d{6}$/.test(foundCode)){
     getStockQuotes([foundCode],function(results){
       if(results[foundCode]&&results[foundCode].price) document.getElementById('rbPrice').value=results[foundCode].price;
+    });
+  }else if(stock&&stock.length>=2&&!/^\d+$/.test(stock)){
+    // 本地找不到，调用新浪财经搜索接口
+    searchStockByName(stock,function(results){
+      if(results&&results.length>0){
+        // 优先选择精确匹配的A股
+        let match=results.find(r=>r.name===stock);
+        if(!match) match=results[0];
+        document.getElementById('rbCode').value=match.code;
+        getStockQuotes([match.code],function(qresults){
+          if(qresults[match.code]&&qresults[match.code].price) document.getElementById('rbPrice').value=qresults[match.code].price;
+        });
+      }
     });
   }
 }
